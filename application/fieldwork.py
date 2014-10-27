@@ -2,16 +2,16 @@ from flask import Flask, render_template, request, redirect, url_for
 from flask.ext.mail import Mail
 from flask.ext.sqlalchemy import SQLAlchemy
 from flask.ext.user import current_user, login_required, roles_required, UserManager, UserMixin, SQLAlchemyAdapter
-
-
 from slugify import slugify
 
 app = Flask(__name__)
 app.config.from_object("settings")
 
 # Load local_settings.py if file exists
-try: app.config.from_object('local_settings')
-except: pass
+try: 
+	app.config.from_object('local_settings')
+except: 
+	pass
 
 # Initialize Flask extensions
 db = SQLAlchemy(app)
@@ -175,7 +175,6 @@ def admin():
 	)
 
 @app.route("/status")
-@login_required
 def status():
 	return render_template("status.html",
 		users=User.query.all(),

@@ -1,7 +1,41 @@
 {% extends "base.html" %}
 {% block content %}
-<h1>Project Page: {{project.name}}</h1>
-<h2>User: {{user}}</h2>
+<h2>{{project.name}}</h2>
+<p>
+{{project.description}}
+</p>
+<h3>User: {{user.fullname}}</h3>
+<div class="row">
+	<div class="col-md-7 col-sm-7">
+		<div class="panel panel-default">
+			<div class="panel-heading">
+				<strong>Notifications</strong>
+			</div>
+			<div class="panel-body">
+			[notifications/messages]
+			</div>
+		</div>
+	</div>
+	<div class="col-md-5 col-sm-5">
+		<div class="panel panel-default">
+			<div class="panel-heading">
+				<strong>Study Area</strong> <a href="#" class="pull-right">Download Project Basemap</a>
+			</div>
+			<div class="panel-body">
+			[mini map here]
+			</div>
+		</div>
+		<div class="panel panel-default">
+			<div class="panel-heading">
+				<strong>Data Upload</strong>
+			</div>
+			<div class="panel-body">
+			Drag and drop files into this box to upload them to your project data.
+			</div>
+		</div>
+	</div>
+</div>
+
 {% endblock %}
 
 {% block map %}

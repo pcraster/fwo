@@ -1,12 +1,11 @@
-
-DATADIR="/home/koko/code/fieldworkonline/data"
-DEBUG=True
-SECRET_KEY='t0ps3kr1t'
-USERNAME='admin'
-PASSWORD='admin'
-SECRET_KEY = 'sud9a8sud928jdajs98dja98sjda8dj3jd98adjkd'                 # Change this for production!!!
-SQLALCHEMY_DATABASE_URI = 'sqlite:///fieldwork.sqlite'  # Use Sqlite file db
+# Settings overridden by local_settings
+DEBUG=False
+SECRET_KEY=''
+USERNAME=''
+PASSWORD=''
+SECRET_KEY = ''
 CSRF_ENABLED = True
+SQLALCHEMY_DATABASE_URI = '' 
 
 # Configure Flask-Mail -- Required for Confirm email and Forgot password features
 MAIL_SERVER   = 'smtp.gmail.com'
@@ -15,6 +14,7 @@ MAIL_USE_SSL  = True                            # Some servers use MAIL_USE_TLS=
 MAIL_USERNAME = 'email@example.com'
 MAIL_PASSWORD = 'password'
 MAIL_DEFAULT_SENDER = '"Sender" <noreply@example.com>'
+
 
 # Configure Flask-User
 USER_PRODUCT_NAME           = "ProductName"     # Used by email templates
