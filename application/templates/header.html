@@ -1,0 +1,43 @@
+
+
+<nav class="navbar navbar-default navbar-inverse" role="navigation">
+  <div class="container-fluid">
+    <!-- Brand and toggle get grouped for better mobile display -->
+    <div class="navbar-header">
+      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1">
+        <span class="sr-only">Toggle navigation</span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+      <!--<a class="navbar-brand" href="#">Fieldwork Online</a>-->
+    </div>
+
+    <!-- Collect the nav links, forms, and other content for toggling -->
+    <!--<div class="collapse navbar-collapse">-->
+      <ul class="nav navbar-nav navbar-left">
+        <!--<li class="active"><a href="/"><i class="fa fa-flag"></i> <strong>Fieldwork France 2014</strong> <i class="fa fa-angle-right"></i> Group A</a></li>-->
+        <li class="active"><a href="/"><i class="fa fa-flag"></i> Home</a></li>
+        {% if current_user.id and project and user %}
+	        <li><a href="/projects/{{project.slug}}/{{user.id}}/data"><i class="fa fa-database"></i> Data</a></li>
+	        <li><a href="/projects/{{project.slug}}/{{user.id}}/maps"><i class="fa fa-map-marker"></i> Maps</a></li>
+	        <li><a href="/projects/{{project.slug}}/{{user.id}}/feedback"><i class="fa fa-comment"></i> Feedback</a></li>
+	        <li><a href="/projects/{{project.slug}}/{{user.id}}/collaborate"><i class="fa fa-share-alt"></i> Collaborate</a></li>
+        {% endif %}
+        {% if current_user.id and project and not user %}
+        	<!-- a project has been selected, but no user yet -->
+        	<li><a href="/projects/{{project.slug}}/"><i class="fa fa-file-text"></i> Project Files</a></li>
+        	<li><a href="/projects/{{project.slug}}/"><i class="fa fa-user"></i> Participating Users</a></li>
+        {% endif %}
+      </ul>
+      {% if current_user.id %}
+      	<p class="navbar-text pull-right" style="color:#aaa;">
+      		<i class="fa fa-user"></i> 
+      		Logged in as {{current_user.username}} ({{current_user.email}})
+      	</p> 
+	  {% endif %}
+
+    <!--</div>--><!-- /.navbar-collapse -->
+  </div><!-- /.container-fluid -->
+</nav>
+

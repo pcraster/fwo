@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Administration panel</h1>
+<h3>Active Fieldwork Campaigns <button type="button" class="btn btn-primary btn-sm pull-right"><i class="fa fa-plus"></i> New Fieldwork Campaign</button></h3>
+<table class="table table-condensed">
+<thead>
+<tr><th>ID</th><th>Name</th><th>Description</th><th>Repr</th></tr>
+</thead>
+<tbody>
+{% for campaign in campaigns %}
+<tr><td>{{campaign.id}}</td><td>{{campaign.name}}</td><td>{{campaign.description}}</td><td>{{campaign}}</td></tr>
+{% endfor %}
+</tbody>
+</table>
+
+
+<h3>Active Users</h3>
+<table class="table table-condensed">
+<thead>
+<tr><th>ID</th><th>Username</th><th>E-mail</th><th>Roles</th></tr>
+</thead>
+<tbody>
+{% for user in users %}
+<tr>
+	<td>{{user.id}}</td><td>{{user.username}}</td><td>{{user.email}}</td>
+	<td>
+		{% for role in user.roles %}
+		<span class="label label-primary">{{role.name}} <i class="fa fa-times"></i></span>
+		
+		{% endfor %}
+	</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+
+{% endblock %}

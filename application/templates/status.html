@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Status page</h1>
+<p>
+Current user: {{ current_user.username or current_user.email }}
+</p>
+<p>
+Roles: 
+{% for role in current_user.roles %}
+	{{ role.name }}
+{% endfor %}
+
+</p>
+Users:
+{% for user in users %}
+	{{user.username}}
+{% endfor %}
+<p>
+
+{{lala}}
+
+</p>
+{% endblock %}

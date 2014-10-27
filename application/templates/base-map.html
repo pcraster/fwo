@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+	<head>
+		<title>Fieldwork Online</title>
+		<link href="//maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css" rel="stylesheet">
+		<link href="//maxcdn.bootstrapcdn.com/font-awesome/4.2.0/css/font-awesome.min.css" rel="stylesheet">
+		<style>
+			body {
+				padding-top: 50px;
+			}
+			.navbar .container-fluid, .navbar-collapse {
+			    padding-left:0;
+			}
+			.navbar-collapse.in {
+			    padding-left:30px;
+			}
+			.navbar-inverse .navbar-nav>li>a {
+				color:#61BDFF;
+			}
+		</style>
+	</head>
+	<body>
+		{% block header %}
+			{% include "header.html" %}
+		{% endblock %}
+
+		<div class="container-fluid">
+		{% block content %}{% endblock %}
+
+		
+		</div>
+		{% block map %}{% endblock %}
+
+		{% block footer %}
+			{% include "footer.html" %}
+		{% endblock %}}
+		<script src="//code.jquery.com/jquery-2.1.1.min.js"></script>
+		<script src="//maxcdn.bootstrapcdn.com/bootstrap/3.2.0/js/bootstrap.min.js"></script>
+	</body>
+</html>
+
+

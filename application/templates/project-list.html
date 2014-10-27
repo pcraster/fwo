@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Project List ({{project_list|length}} projects)</h2>
+<p>
+	{% if project_list|length %}
+		Please choose a fieldwork project to work on.
+	{% else %}
+		It seems like you're not enrolled in any fieldwork projects. Please contact your supervisor or administrator for more information.
+	{% endif %}
+</p>
+<p>
+	{% for project in project_list %}
+		<a href="/projects/{{project.slug}}/" class="btn btn-primary"> <i class="fa fa-cube"></i> {{project.name}}</a> 
+  	{% endfor %}
+</p>
+{% endblock %}
