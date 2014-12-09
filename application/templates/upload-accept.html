@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block content %}
+
+
+<h2>Data upload</h2>
+<ul class="list-group">
+{% for item in messages %}
+	<li class="list-group-item">
+		{% if item.passed %}
+			<span style="color:darkgreen"><i class="fa fa-check-circle"></i></span> {{item.message|safe}}
+		{% else %}
+			<span style="color:red">
+				<i class="fa fa-times-circle"></i> 
+				{{item.message|safe}}.
+				{% if item.hint %}Hint: {{item.hint|safe}}.{% endif %}
+			</span> 
+		{% endif %}
+	</li>
+{% endfor %}
+</ul>
+<h2>Data points preview</h2>
+<table class='table table-condensed'>
+{% for point in points %}
+<tr><td>{{point.id}}</td><td>{{point.geometry}}</td>
+<td>{{point.attributes}}</td>
+</tr>
+{% endfor %}
+</table>
+<p>
+Current user: {{ current_user.username or current_user.email }}
+</p>
+<h3>Spreadsheet with measurement locations <button class="btn btn-sm btn-primary"><i class="fa fa-cloud-upload"></i>
+ Upload Spreadsheet</button></h3>
+<p>
+Spreadsheet here.
+</p>
+<h3>Spatialite database <button class="btn btn-sm btn-primary"><i class="fa fa-cloud-upload"></i>
+ Upload Spatialite Database</button></h3>
+<p>
+	For digitized maps
+</p>
+<h3>Photos  <button class="btn btn-sm btn-primary"><i class="fa fa-cloud-upload"></i>
+ Upload Photos</button></h3>
+<p>
+	Of your observations
+</p>
+{% endblock %}

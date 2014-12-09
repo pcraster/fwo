@@ -1,12 +1,15 @@
 {% extends "base.html" %}
 {% block content %}
-<h2>{{project.name}}</h2>
-<p>
-{{project.description}}
-</p>
-<h3>User: {{user.fullname}}</h3>
+<div class="well"  style="margin-top:15px;">
+	<h2 style="margin-top:10px;">{{project.name}}</h2>
+	<p>
+	{{project.description}}
+	</p>
+</div>
+<!--
 <div class="row">
 	<div class="col-md-7 col-sm-7">
+
 		<div class="panel panel-default">
 			<div class="panel-heading">
 				<strong>Notifications</strong>
@@ -27,15 +30,15 @@
 		</div>
 		<div class="panel panel-default">
 			<div class="panel-heading">
-				<strong>Data Upload</strong>
+				<strong>Quick Data Upload</strong>
 			</div>
 			<div class="panel-body">
-			Drag and drop files into this box to upload them to your project data.
+			Drag and drop files into this box to upload them to your project data. Spreadsheets, spatialite databases, and photos are automatically added to the map. All other data is dropped in your "Attachments" folder.
 			</div>
 		</div>
 	</div>
 </div>
-
+-->
 {% endblock %}
 
 {% block map %}

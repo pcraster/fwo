@@ -19,12 +19,24 @@
 			}
 			.navbar .container-fluid, .navbar-collapse {
 			    padding-left:0;
+			    padding-right:0;
 			}
 			.navbar-collapse.in {
 			    padding-left:30px;
 			}
 			.navbar-inverse .navbar-nav>li>a {
 				color:#61BDFF;
+			}
+			div.panel-body table.table tbody tr td:first-child, 
+			div.panel-body table.table thead tr th:first-child {
+				padding-left:15px;
+			}
+			div.panel-body table.table thead tr th {
+				font-weight:bold;
+				border-bottom:none;
+			}
+			div.panel-body table.table td {
+				vertical-align: middle;
 			}
 		</style>
 	</head>
@@ -42,16 +54,12 @@
 		{% block content %}{% endblock %}
 		</div>
 
-		<div class="container-fluid">
-			<p>
-				<!--
-				Lorem ipsum dolor sit amet, consectetur adipiscing elit. Duis nec nulla malesuada, euismod metus commodo, lacinia nisi. Aliquam eleifend, velit non commodo consequat, dolor elit maximus mi, quis pellentesque ipsum risus sit amet est. Etiam nec lacus eget mi sodales pharetra. Vivamus convallis justo a nibh consectetur, eget rutrum urna fermentum. Vestibulum sit amet tellus fermentum, cursus tortor ac, molestie ex. Fusce vestibulum neque vel libero aliquet bibendum nec at sem.
-				-->
-			</p>
-		</div>
 		{% block footer %}
 			{% include "footer.html" %}
 		{% endblock %}
+
+		{% include "select-project-modal.html" %}
+
 		<script src="//code.jquery.com/jquery-2.1.1.min.js"></script>
 		<script src="//maxcdn.bootstrapcdn.com/bootstrap/3.2.0/js/bootstrap.min.js"></script>
 		{% block footjs %}

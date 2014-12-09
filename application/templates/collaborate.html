@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Project collaboration</h2>
+<h3>Other participants</h3>
+<p>
+		<table class="table table-condensed">
+			<thead>
+			<tr><th>Name</th><th>E-mail</th><th>Roles</th></tr>
+			</thead>
+			<tbody>
+			{% for user in users %}
+			<tr>
+				{% if user.is_student %}
+					<td>
+						<a href="/projects/{{project.slug}}/{{user.id}}/">{{user.fullname}}</a>
+					</td>
+				{% else %}
+					<td>{{user.fullname}}</td>
+				{% endif %}
+				<td>{{user.email}}</td><td>
+		{% for role in user.roles %}
+			{% if role.name=="student" %}
+			<!--
+				<span class="label label-default" style="background-color:#666;">{{role.name}}</span>
+			-->
+			{% else %}
+				<span class="label label-primary">{{role.name}}</span>
+			{% endif %}
+		
+		{% endfor %}
+			</td></tr>
+			{% endfor %}
+			</tbody>
+			</table>
+</p>
+<h3>Share data</h3>
+<p>
+	This is useful if you want to use some of your data as inputs in the virtual globe.
+</p>
+
+{% endblock %}

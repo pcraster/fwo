@@ -1,16 +1,65 @@
 {% extends "base.html" %}
+
+
+
+{% block footjs %}
+	<script>
+	$(function () {
+	  $('#myModal').modal({
+	  	'animation':false
+	  })
+	})
+	</script>
+{% endblock %}
+
 {% block content %}
-<h2>Project List ({{project_list|length}} projects)</h2>
-<p>
+
+<ul>
+{% for message in messages %}
+<li>{{message}}</li>
+{% endfor %}
+</ul>
+
+<div class="panel panel-default" style="margin-top:15px;">
 	{% if project_list|length %}
-		Please choose a fieldwork project to work on.
+	<div class="list-group">
+		{% for project in project_list %}
+		<a href="/projects/{{project.slug}}/" class="list-group-item">
+			<h4 class="list-group-item-heading">Project: {{project.name}}</h4>
+			<p class="list-group-item-text">{{project.description}}</p>
+		</a>
+	  	{% endfor %}
+	</div>
 	{% else %}
-		It seems like you're not enrolled in any fieldwork projects. Please contact your supervisor or administrator for more information.
+	<div class="panel-body" style="padding-bottom:5px;">
+	<p class="text-center">
+		Oops! It seems like you are not enrolled in any fieldwork campaigns. Contact your supervisor or enter an invitation key for your fieldwork below.
+	</p>
+	</div>
 	{% endif %}
-</p>
-<p>
-	{% for project in project_list %}
-		<a href="/projects/{{project.slug}}/" class="btn btn-primary"> <i class="fa fa-cube"></i> {{project.name}}</a> 
-  	{% endfor %}
-</p>
+</div>
+
+
+
+
+
+<div class="panel panel-default">
+	<div class="panel-heading">
+		<h4 class="list-group-item-heading" style="margin-bottom:0px;">Use an invitation key to enroll yourself</h4>
+	</div>
+	<div class="panel-body">
+		<form role="form" method="post" action="">
+			<div class="form-group">
+				<input type="text" class="form-control" name="invite_key" id="campaign-invite-key" placeholder="Enter your invitation key">
+			</div>
+			<button type="submit" class="btn btn-primary btn-sm">Enroll</button>
+		</form>
+	</div>
+</div>
+			
+
+			
+
+
+
 {% endblock %}

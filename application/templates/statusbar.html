@@ -1,38 +1,51 @@
-<div class="container-fluid" style="background-color:#eee">
+
+<div class="container-fluid" id="statusbar" style="background-color:#eee">
 	<div class="row" style="font-size:20px;padding:10px 0px 10px 0px;">
-		<div class="col-xs-8 col-md-8">
-		<!-- info string on the left -->
-		{% if not current_user.id %}
-        	Please sign in to use access Fieldwork Online
-        {% else %}
-        	{% if user %}
-        		<i class="fa fa-cube"></i>
-        	{% else %}
-				<i class="fa fa-cubes"></i>
-        	{% endif %}
-        	{% if project %}
-				{% if current_user.is_supervisor %}
-					You're currently supervising 
-				{% elif current_user.is_admin %}
-					You're currently working on 
+		<div class="col-xs-6 col-md-6">
+
+			{% if not current_user.id %}
+	        	Please sign in to use access Fieldwork Online
+	        {% else %}
+	        	{% if user %}
+	        		<i class="fa fa-cube"></i>
+	        	{% else %}
+					<i class="fa fa-cubes"></i>
+	        	{% endif %}
+	        	{% if project %}
+					{% if current_user.is_supervisor %}
+						<!--You're currently supervising -->
+					{% elif current_user.is_admin %}
+						<!--You're currently working on -->
+					{% else %}
+						<!--You're currently working on-->
+					{% endif %}
+					<a href="/projects/{{project.slug}}/">{{project.name}}</a> 
 				{% else %}
-					You're currently working on
+					Fieldwork Online
 				{% endif %}
-				<a href="/projects/{{project.slug}}/">{{project.name}}</a> 
+				{% if user %}
+					<i class="fa fa-angle-right"></i> <a href="#">{{user.fullname}}</a>
+				{% endif %}
 			{% endif %}
-			{% if user %}
-				<i class="fa fa-angle-right"></i> <a href="#">{{user.fullname}}</a>
-			{% endif %}
-		{% endif %}
 		</div>
-		<div class="col-xs-4 col-md-4">
+		<div class="col-xs-6 col-md-6">
 		<!-- buttons on the right -->
 		{% if current_user.id %}
 			<a href="/user/logout" style="margin-left:6px;" class="btn btn-primary btn-sm pull-right"><i class="fa fa-times"></i> Log Out</a>
+
 			{% if current_user.is_admin %}
-			<a href="/admin" class="btn btn-sm pull-right" style="background-color:#ddd;color:#666;margin-left:6px;"><i class="fa fa-wrench"></i> Manage Projects</a>
+			<a href="/admin" class="btn btn-sm pull-right" style="background-color:#ddd;color:#666;margin-left:6px;"><i class="fa fa-wrench"></i> Manage Site</a>
 			{% endif %}
+
+			{% if current_user.is_admin or current_user.is_supervisor %}
+			{% if project %}
+			<a href="/projects/{{project.slug}}/" class="btn btn-sm pull-right" style="background-color:#ddd;color:#666;margin-left:6px;"><i class="fa fa-wrench"></i> Manage Project</a>
+			{% endif %}
+			{% endif %}
+
+			
 			<a href="/projects/" class="btn btn-sm pull-right" style="background-color:#ddd;color:#666;margin-left:6px;"><i class="fa fa-refresh"></i> Switch Project</a>
+			
 		{% endif %}
 		</div>
 	</div>

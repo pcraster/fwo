@@ -25,6 +25,8 @@ USER_REGISTER_TEMPLATE      = 'flask_user/login_or_register.html'
 USER_AFTER_LOGIN_ENDPOINT   = 'home'
 USER_AFTER_CONFIRM_ENDPOINT = 'home'
 
+USER_ENABLE_CONFIRM_EMAIL   = False 
+
 # URLs                        # Default
 USER_CHANGE_PASSWORD_URL      = '/user/change-password'
 USER_CHANGE_USERNAME_URL      = '/user/change-username'

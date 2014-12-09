@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+
+
+{% block statusbar %}{% endblock %}
+
+{% block header %}{% endblock %}
+
+{% block content %}
+
+<h1>Installation</h1>
+<ul>
+{% for message in messages %}
+<li>{{message}}</li>
+
+{% endfor %}
+</ul>
+{% endblock %}

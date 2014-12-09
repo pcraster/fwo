@@ -1,8 +1,23 @@
-from flask import Flask, render_template, request, redirect, url_for
+import os
+import requests
+import glob
+import shutil
+import json
+import random
+
+from flask import Flask, render_template, request, redirect, abort, send_file, send_from_directory, url_for, make_response, Response
+
 from flask.ext.mail import Mail
 from flask.ext.sqlalchemy import SQLAlchemy
 from flask.ext.user import current_user, login_required, roles_required, UserManager, UserMixin, SQLAlchemyAdapter
 from slugify import slugify
+
+from PyQt4.QtCore import QFileInfo
+from qgis.core import *
+
+QgsApplication([], True)
+QgsApplication.initQgis()
+#make sure to install libqt4-dev python-qt4
 
 app = Flask(__name__)
 app.config.from_object("settings")
@@ -13,6 +28,12 @@ try:
 except: 
 	pass
 
+if not os.access(app.config["DATADIR"], os.W_OK):
+	print " * No write access to data directory %s"%(app.config["DATADIR"])
+
+
+print " * Database is at %s"%(app.config["SQLALCHEMY_DATABASE_URI"])
+
 # Initialize Flask extensions
 db = SQLAlchemy(app)
 mail = Mail(app)
@@ -22,7 +43,7 @@ class User(db.Model, UserMixin):
 	id = db.Column(db.Integer, primary_key=True)
 	active = db.Column(db.Boolean(), nullable=False, default=False)
 	username = db.Column(db.String(50), nullable=False, unique=True)
-	fullname = db.Column(db.String(50), nullable=False, unique=False)
+	fullname = db.Column(db.String(50), nullable=True, unique=False, default='')
 	password = db.Column(db.String(255), nullable=False, default='')
 	email = db.Column(db.String(255), nullable=False, unique=True)
 	confirmed_at = db.Column(db.DateTime())
@@ -50,6 +71,14 @@ class User(db.Model, UserMixin):
 				return True
 		return False
 
+	def enroll_with_invite_key(self,invite_key):
+		campaign=Campaign.query.filter_by(invite_key=invite_key).first()
+		if campaign:
+			campaign.enroll_user(self.id)
+			return True
+		else:
+			return False
+
 	@property
 	def working_on(self):
 		"""
@@ -59,6 +88,13 @@ class User(db.Model, UserMixin):
 	@property
 	def slug(self):
 		return slugify("%i-%s"%(self.id,self.username))
+
+	@property
+	def current_projects(self):
+		if current_user.is_admin:
+			return Campaign.query.all()
+		else:
+			return Campaign.query.filter(Campaign.users.any(id=self.id)).all()
 
 
 # Define Role model
@@ -79,58 +115,164 @@ class Campaign(db.Model):
 	name = db.Column(db.String(50), nullable=False, unique=True)
 	description = db.Column(db.String(255), nullable=False, unique=False)
 	slug = db.Column(db.String(50), nullable=False, unique=True)
+	invite_key = db.Column(db.String(50), nullable=True)
 	users = db.relationship('User', secondary='campaign_users', backref=db.backref('campaigns',lazy='dynamic'))
 	def __init__(self,name,description):
 		self.name=name
 		self.description=description
+		self.invite_key=''.join(random.choice("ABCDEFGHJKLMNPQRSTUVWXYZ0123456789") for _ in range(6))
 		self.slug=slugify(name)
+		basedir=self.basedir
+		if not os.path.isdir(basedir):
+			os.makedirs(basedir)
+			os.makedirs(os.path.join(basedir,"userdata"))
+			os.makedirs(os.path.join(basedir,"projectdata","map"))
+			os.makedirs(os.path.join(basedir,"projectdata","attachments"))
+
 	def __repr__(self):
 		return "<Campaign: /campaigns/%s>"%(self.slug)
+	@property
+	def basedir(self):
+		return os.path.join(app.config["DATADIR"],"campaigns",self.slug)
+	@property
+	def basemap(self):
+		projectfiles=glob.glob(os.path.join(self.basedir,"basemaps")+"/*.qgs")
+		try: return projectfiles[0]
+		except: return False
+	def userdata(self,user_id):
+		user=User.query.filter(User.id==int(user_id)).first()
+		userdir=os.path.join(self.basedir,"userdata",user.slug)
+		if not os.path.isdir(userdir):
+			os.makedirs(userdir)
+			os.makedirs(os.path.join(userdir,"data"))
+			os.makedirs(os.path.join(userdir,"map"))
+			os.makedirs(os.path.join(userdir,"temp"))
+			os.makedirs(os.path.join(userdir,"attachments"))
+			shutil.copy("template.sqlite",os.path.join(userdir,"features.sqlite"))
+		return userdir
+	def enroll_user(self,user_id):
+		"""
+		enroll user <user_id> in this project.
+
+		- add the reference in the database
+		- create the user directory in the project's userdata folder
+		- clone the basemap into the userdata 
+		"""
+		user=User.query.filter(User.id==int(user_id)).first()
+		userdir=self.userdata(user_id)
+		self.users.append(user)
+		db.session.commit()
+
+	def attachments(self,user_id):
+		files=sorted(glob.glob(os.path.join(self.userdata(user_id),"attachments")+"/*.*"))
+		#use sorted(..., key=os.path.getmtime) to sort by modification time instead
+		flist=[]
+		for f in files:
+			try:
+				(head,tail)=os.path.split(f)
+				extension=os.path.splitext(f)[1].lower()
+				if extension.endswith((".png",".jpg",".jpeg")): filetype="image" 
+				elif extension.endswith((".xls",".xlsx")): filetype="spreadsheet" 
+				elif extension.endswith((".doc",".docx",".pdf",".txt")): filetype="document"
+				else: filetype="other"
+				flist.append({
+					'name':tail,
+					'type':filetype,
+					'extension':extension,
+					'size':os.path.getsize(f)
+				})
+			except Exception as e:
+				pass
+		return flist
+	@property
+	def table_of_contents(self):
+		"""
+		Returns a table of contents and map preferences for a project. The table of contents is read from the QGIS project of the user and stored in the "toc" node of the returned dict. Other nodes store the preferences which can be modified on a per user (viewer) basis, such as the layer visibilities, active layer, zoom level, location, and other map settings. This ensures that when a user is toggling layers on and off and panning in the map, that when they return to the map view the same view is presented as last time.
+		"""
+		return False
+		# _QgsLayerTypes=['vector','raster','plugin'] 
+		# proj=QgsProject.instance()
+		# proj.read(QFileInfo(self.basemap))
+		# def node_to_dict(node):
+		# 	nodes=[]
+		# 	for child in node.children():
+		# 		if isinstance(child, QgsLayerTreeGroup):
+		# 			nodes.append({
+		# 				'node':'group',
+		# 				'visible':False if child.isVisible()==0 else True,
+		# 				'collapse':False,
+		# 				'name':str(child.name()),
+		# 				'children':node_to_dict(child)
+		# 			})
+		# 		elif isinstance(child, QgsLayerTreeLayer):
+		# 			lyr=child.layer()
+		# 			nodes.append({
+		# 				'node':'layer',
+		# 				'visible':False if child.isVisible()==0 else True,
+		# 				'collapse':False,
+		# 				'name':str(child.layerName()),
+		# 				'type':_QgsLayerTypes[int(lyr.type())],
+		# 				'children':[]
+		# 			})
+		# 	return nodes
+		# return node_to_dict(proj.layerTreeRoot())
+
+	def add_file(self,file_path):
+		"""
+		Add a file to a project.
+		"""
+		pass
 
 class CampaignUsers(db.Model):
 	id = db.Column(db.Integer(), primary_key=True)
 	campaign_id = db.Column(db.Integer(), db.ForeignKey('campaign.id', ondelete='CASCADE'))
 	user_id = db.Column(db.Integer(), db.ForeignKey('user.id', ondelete='CASCADE'))
 
-# Create all database tables
 db.create_all()
 
 # Setup Flask-User
 db_adapter = SQLAlchemyAdapter(db,  User)       # Select database adapter
 user_manager = UserManager(db_adapter, app)     # Init Flask-User and bind to app
 
-if Role.query.count()==0:
-	db.session.add(Role(name='administrator'))
-	db.session.add(Role(name='supervisor'))
-	db.session.add(Role(name='student'))
-	db.session.commit()
 
-# Set up some demo users
-if not User.query.filter(User.username=='admin').first():
-    admin = User(username='admin', fullname='Site Admin', email='kokoalberti@yahoo.com', active=True, password=user_manager.hash_password('admin'))
-    admin.roles.append(Role.query.filter(Role.name=='administrator').first())
-    admin.roles.append(Role.query.filter(Role.name=='supervisor').first())
-    db.session.add(admin)
-    db.session.commit()
-if not User.query.filter(User.username=='supervisor').first():
-    supervisor = User(username='supervisor', fullname='Site Supervisor', email='k.alberti@uu.nl', active=True, password=user_manager.hash_password('supervisor'))
-    supervisor.roles.append(Role.query.filter(Role.name=='supervisor').first())
-    db.session.add(supervisor)
-    db.session.commit()
-if not User.query.filter(User.username=='student').first():
-    student = User(username='student', fullname='Sam Student', email='k.alberti@students.uu.nl', active=True, password=user_manager.hash_password('student'))
-    student.roles.append(Role.query.filter(Role.name=='student').first())
-    db.session.add(student)
-    db.session.commit()
 
-if not Campaign.query.filter(Campaign.name=='Fieldwork Demo').first():
-	campaign = Campaign(name="Fieldwork Demo",description="A fieldwork campaign for demonstration purposes")
-	campaign.users.append(User.query.filter(User.username=='student').first())
-	campaign.users.append(User.query.filter(User.username=='supervisor').first())
-	campaign.users.append(User.query.filter(User.username=='admin').first())
-	db.session.add(campaign)
-	db.session.commit()
 
+@app.route("/wmsproxy")
+def wmsproxy():
+	"""
+	This acts as a HTTP proxy for the WMS. There are a few reasons for going through the trouble of making a proxy:
+
+	- Due to same origin policy the GetFeatureInfo requests need to originate on the same host. By having having a proxy this is guaranteed and it is possible to switch WMS servers on the fly if the need arises.
+	- Sometimes QGIS server (if CRS restrictions have not been set manually in the project preferences) will return in XML a list of hundreds of allowed CRSes for each layer. This seriously bloats the GetProjectInfo request. In this proxy we can manually limit the allowed CRSes to ensure the document does not become huge.
+	- QGIS server does not support json responses! Since we are handling a lot of these WMS requests using JavaScript (also the GetFeatureInfo requests) it would be a lot easier, faster, and result in cleaner code, if the WMS server just returned JSON documents. Using this proxy we can add json support if the request argument FORMAT is set to "application/json", and do the conversion serverside with xmltodict. A JSONP callback argument is also supported.
+	- We can camouflage the MAP parameter. This usually takes a full pathname to the map file. However, we dont want to reveal this to the world and let everybody mess about with it. Therefore we can override the MAP parameter in the proxy from the URL, that way the URL for a fieldwork WMS server will be /projects/fieldwork-demo/3/wms?<params> which is a lot neater than /cgi-bin/qgisserv.fcgi?MAP=/var/fieldwork-data/.....etc. There will be no MAP attribute visible to the outside in that case since it is added only on the proxied requests.
+	- There are some opportunities for caching/compressing WMS requests at a later time if we use this method
+	"""
+	import xmltodict
+	requestparams=dict(request.args) #we need something which is mutable...
+	jsonp=request.args.get("JSONP","")
+	if(jsonp):
+		requestparams.pop("JSONP") #never send a JSONP parameter to the qgis server
+	if(request.args.get("FORMAT","")=="application/json"):
+		requestparams.update({'FORMAT':"text/xml"}) #always request xml from qgis server
+	if(request.args.get("INFO_FORMAT","")=="application/json"):
+		requestparams.update({'INFO_FORMAT':"text/xml"}) #always request xml from qgis server
+	r=requests.get(app.config["WMS_SERVER_URL"],params=requestparams)
+	print r.url
+	if r.status_code==200:
+		if r.headers['content-type']=="text/xml" and ( request.args.get("FORMAT","")=="application/json" or request.args.get("INFO_FORMAT","")=="application/json"):
+			#if json was requested and we received xml from the server, then convert it...
+			jsonresponse=json.dumps(xmltodict.parse(r.text.replace(app.config["WMS_SERVER_URL"],request.base_url)), sort_keys=False,indent=4, separators=(',', ': '))
+			jsonresponse=jsonp+"("+jsonresponse+")" if jsonp!="" else jsonresponse
+			return Response(jsonresponse,mimetype="application/json")
+		elif r.headers['content-type']=="text/xml":
+			#if xml was requested and xml was received, then just update the server urls in the response to the url of the wms proxy
+			return Response(r.text.replace(app.config["WMS_SERVER_URL"],request.base_url),mimetype=r.headers['content-type'])
+		else:
+			#all other cases don't modify anything and just return whatever qgis server responded with
+			return Response(r.content,mimetype=r.headers['content-type'])
+	else:
+		return Response("<pre>WMS server at %s returned status %i.</pre>"%(app.config["WMS_SERVER_URL"],r.status_code),mimetype="text/html")
 
 @app.route("/")
 @login_required
@@ -153,9 +295,6 @@ def home():
 	else:
 		return redirect(url_for('project_list'))
 		
-
-
-
 	workon=request.args.get('workon', False)
 	if workon:
 		current_user.current_project=int(workon)
@@ -186,15 +325,22 @@ def status():
 def profile_page():
 	return render_template("profile.html")
 
-@app.route("/projects/")
+@app.route("/projects/",methods=["GET","POST"])
 @login_required
 def project_list():
-	project_list=None
-	if current_user.is_admin:
-		project_list=Campaign.query.all()
-	else:
-		project_list=Campaign.query.filter(Campaign.users.any(id=current_user.id)).all()
-	return render_template("project-list.html",project_list=project_list)
+	messages=[]
+	if request.method=="POST":
+		invite_key=request.form.get("invite_key","")
+		invite_result=current_user.enroll_with_invite_key(invite_key)
+		if invite_result:
+			messages.append("You have been enrolled in a project.")
+		else:
+			messages.append("Your invite key could not be found.")
+
+	current_projects=current_user.current_projects
+	num_of_projects=len(current_projects)
+	return render_template("project-list.html",project_list=current_projects,messages=messages)
+
 
 
 @app.route("/projects/<slug>/")
@@ -204,34 +350,132 @@ def project_userlist(slug=None):
 	Lists the users which are participating in this project.
 	"""
 	project=Campaign.query.filter_by(slug=slug).first_or_404()
-	users=User.query.filter(User.campaigns.contains(project)).all()
-	return render_template("project-userlist.html",project=project,users=users)
+	if current_user.is_student:
+		return redirect(url_for('project_page',slug=project.slug,user_id=current_user.id))
+	else:
+		users=User.query.filter(User.campaigns.contains(project)).all()
+		enrollable_users=User.query.filter(~User.campaigns.contains(project)).all()
+		return render_template("project-userlist.html",project=project,users=users,enrollable_users=enrollable_users)
+
 
 
 @app.route("/projects/<slug>/<user_id>/")
 @login_required
 def project_page(slug=None,user_id=None):
 	project=Campaign.query.filter_by(slug=slug).first_or_404()
-	user=User.query.filter_by(id=user_id).first()
+	user=User.query.filter_by(id=user_id).first_or_404()
 	return render_template("project.html",project=project,user=user)
 
+@app.route("/projects/<slug>/<user_id>/enroll")
+@login_required
+def project_enroll(slug=None,user_id=None):
+	project=Campaign.query.filter_by(slug=slug).first_or_404()
+	user=User.query.filter_by(id=user_id).first_or_404()
+	project.enroll_user(user.id)
+	return redirect(url_for('project_userlist',slug=slug))
 
 @app.route("/projects/<slug>/<user_id>/data",methods=["GET","POST"])
 @login_required
 def upload(slug,user_id):
 	project=Campaign.query.filter_by(slug=slug).first_or_404()
 	user=User.query.filter_by(id=user_id).first_or_404()
+	userdata=project.userdata(user.id)
 	if request.method=="POST":
-		return render_template("upload.html",project=project,user=user)
+		messages=[]
+		from utils import excel_parser
+		f = request.files['uploadfile']
+		if f:
+			upload_file=os.path.join(userdata,"attachments",f.filename)
+			f.save(upload_file)
+			if f.filename.endswith((".xls",".xlsx")):
+				spatialite_file=os.path.join(userdata,"features.sqlite")
+				(messages,status,points)=excel_parser(upload_file,spatialite_file)
+			else:
+				messages=[]
+				points=[]
+		return render_template("upload-accept.html",project=project,user=user,messages=messages,points=points)
 	else:
-		return render_template("upload.html",project=project,user=user)
+		#allow a HEAD request here just to let clients see if the file exists...
+		filename=request.args.get("filename","")
+		if filename != "":
+			#Show a download dialog if the file is not a picture
+			as_attachment = True if not filename.lower().endswith((".png",".jpg",".jpeg")) else False
+			return send_from_directory(os.path.join(userdata,"attachments"), filename, as_attachment=as_attachment)
+		else:
+			attachments=project.attachments(user_id)
+			return render_template("upload.html",project=project,user=user,attachments=attachments)
+
+
+
+@app.route("/projects/<slug>/<user_id>/feedback")
+@login_required
+def project_feedback(slug,user_id):
+	project=Campaign.query.filter_by(slug=slug).first_or_404()
+	user=User.query.filter_by(id=user_id).first_or_404()
+	return render_template("feedback.html",project=project,user=user)
+
+@app.route("/projects/<slug>/<user_id>/collaborate")
+@login_required
+def project_collaborate(slug,user_id):
+	project=Campaign.query.filter_by(slug=slug).first_or_404()
+	user=User.query.filter_by(id=user_id).first_or_404()
+	users=User.query.filter(User.campaigns.contains(project)).all()
+	return render_template("collaborate.html",project=project,user=user,users=users)
 
 @app.route("/projects/<slug>/<user_id>/maps")
 @login_required
 def project_maps(slug,user_id):
 	project=Campaign.query.filter_by(slug=slug).first_or_404()
 	user=User.query.filter_by(id=user_id).first_or_404()
+
+	#project_toc=project.table_of_contents
+	#return render_template("maps.html",project=project,user=user,toc=project_toc)
 	return render_template("maps.html",project=project,user=user)
+
+@app.route("/install")
+def install():
+	"""
+		Install the fieldwork online app.
+
+		Todo: only do this when there is nothing there yet! Make a check and otherwise just show an empty help page or something.
+
+	"""
+	messages=[]
+	if User.query.count()==0:
+		db.session.add(Role(name="administrator"))
+		db.session.add(Role(name="supervisor"))
+		db.session.add(Role(name="student"))
+		db.session.commit()
+		messages.append("Created <code>administrator</code>, <code>supervisor</code> and <code>student</code> roles.")
+
+		admin = User(username='admin', fullname='Site Admin', email='kokoalberti@yahoo.com', active=True, password=user_manager.hash_password('admin'))
+		admin.roles.append(Role.query.filter(Role.name=='administrator').first())
+		admin.roles.append(Role.query.filter(Role.name=='supervisor').first())
+		db.session.add(admin)
+		messages.append("Created a user <code>admin</code>")
+
+		supervisor = User(username='supervisor', fullname='Site Supervisor', email='k.alberti@uu.nl', active=True, password=user_manager.hash_password('supervisor'))
+		supervisor.roles.append(Role.query.filter(Role.name=='supervisor').first())
+		db.session.add(supervisor)
+		messages.append("Created a user <code>supervisor</code>")
+
+		student = User(username='student', fullname='Sam Student', email='k.alberti@students.uu.nl', active=True, password=user_manager.hash_password('student'))
+		student.roles.append(Role.query.filter(Role.name=='student').first())
+		db.session.add(student)
+		db.session.commit()
+		messages.append("Created a user <code>student</code>")
+
+		campaign = Campaign(name="Fieldwork Online Demo Project",description="A fieldwork campaign for demonstration purposes. This project showcases basic functionality and lets you try out the interface.")
+		campaign.users.append(admin)
+		db.session.add(campaign)
+		db.session.commit()
+		messages.append("Created a fieldwork project called demo project.'")
+	else:
+		messages.append("There are already users defined in the database. Please delete the database and try again.")
+
+
+	return render_template("install.html",messages=messages)
+
 
 if __name__ == "__main__":
     app.run(debug=True)

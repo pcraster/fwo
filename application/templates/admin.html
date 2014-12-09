@@ -1,17 +1,45 @@
 {% extends "base.html" %}
+
+{% block title %}
+Administration panel	
+{% endblock %}
 {% block content %}
-<h1>Administration panel</h1>
-<h3>Active Fieldwork Campaigns <button type="button" class="btn btn-primary btn-sm pull-right"><i class="fa fa-plus"></i> New Fieldwork Campaign</button></h3>
-<table class="table table-condensed">
-<thead>
-<tr><th>ID</th><th>Name</th><th>Description</th><th>Repr</th></tr>
-</thead>
-<tbody>
-{% for campaign in campaigns %}
-<tr><td>{{campaign.id}}</td><td>{{campaign.name}}</td><td>{{campaign.description}}</td><td>{{campaign}}</td></tr>
-{% endfor %}
-</tbody>
-</table>
+<div class="panel panel-default" style="margin-top:15px;">
+	<div class="panel-heading">
+		<strong>List of fieldwork projects</strong>
+	</div>
+	<div class="panel-body" style="padding:0;padding-top:10px;">
+		<table class="table table-condensed">
+		<thead>
+		<tr><th>ID</th><th>Name</th><th>Description</th><th>Repr</th></tr>
+		</thead>
+		<tbody>
+		{% for campaign in campaigns %}
+		<tr><td>{{campaign.id}}</td><td>{{campaign.name}}</td><td>{{campaign.description}}</td><td>{{campaign}}</td></tr>
+		{% endfor %}
+		</tbody>
+		</table>
+
+	</div>
+</div>
+<div class="panel panel-default" style="margin-top:15px;">
+	<div class="panel-heading">
+		<strong>Add new fieldwork project</strong>
+	</div>
+	<div class="panel-body">
+		<form role="form" action="" method=post enctype="multipart/form-data">
+		<div class="form-group">
+			<input type="text" name="project_name">
+		</div>
+		<div class="form-group">
+			<input type="file" name="uploadfile">
+		</div>
+		<button type="submit" class="btn btn-primary btn-sm"><i class="fa fa-plus"></i> Create new fieldwork project</button>
+		</form>
+	</div>
+</div>
+
+
 
 
 <h3>Active Users</h3>
