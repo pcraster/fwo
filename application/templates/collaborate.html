@@ -1,6 +1,30 @@
 {% extends "base.html" %}
 {% block content %}
-<h2>Project collaboration</h2>
+<h2>Map services</h2>
+<p>
+The data for this fieldwork project is available via the internet. The easiest access is via Web Map Services (WMS) and Web Feature Services (WFS). These services let you load online geodata in the GIS client (such as QGIS or ArcGIS) on your desktop. The url for map services (both WMS and WFS) for your project data (as well as the base maps) is:
+</p>
+<p>
+<code>http://{{request.host}}/projects/{{project.slug}}/{{user.id}}/mapservices</code>
+</p>
+<p>
+In QGIS you can add your data to a QGIS project by using the <kbd>Layer</kbd> <i class="fa fa-caret-right"></i> <kbd>Add Layer</kbd> <i class="fa fa-caret-right"></i> <kbd>Add WMS/WFS Layer</kbd> menu and entering the above URL. 
+</p>
+<h2>Sharing your web map</h2>
+<p>
+If you would like to share only your web map with someone else, like an external supervisor, you can create a shortened URL through which the map can be accessed. Please be aware that short URLs allow users to view your web map without having to enter a password!
+</p>
+<p>
+	<form>
+		<code>Use the button to generate a new link</code> 
+		<button class="btn btn-sm btn-primary"><i class="fa fa-refresh"></i> Create new short link</button>
+	</form>
+</p>
+<h2>Download your data</h2>
+<p>
+If you would like to share only your web map with someone else, like an external supervisor, you can create a shortened URL through which the map can be accessed. 
+</p>
+<!--
 <h3>Other participants</h3>
 <p>
 		<table class="table table-condensed">
@@ -20,9 +44,8 @@
 				<td>{{user.email}}</td><td>
 		{% for role in user.roles %}
 			{% if role.name=="student" %}
-			<!--
 				<span class="label label-default" style="background-color:#666;">{{role.name}}</span>
-			-->
+
 			{% else %}
 				<span class="label label-primary">{{role.name}}</span>
 			{% endif %}
@@ -37,5 +60,5 @@
 <p>
 	This is useful if you want to use some of your data as inputs in the virtual globe.
 </p>
-
+-->
 {% endblock %}

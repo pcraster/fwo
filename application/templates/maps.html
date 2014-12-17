@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block headcss %}
-    <link rel="stylesheet" href="http://openlayers.org/en/v3.0.0/css/ol.css" type="text/css">
+    <link rel="stylesheet" href="/static/css/ol.css" type="text/css">
     <link rel="stylesheet" href="/static/maps.css" type="text/css">
 {% endblock %}
 {% block footjs %}
@@ -9,13 +9,27 @@
   the HTML output.
   -->
   <script>
-    WMS_URL='/wmsproxy';
-    WMS_MAP='{{project.basedir}}/projectdata/map/project.qgs';
+    WMS_URL='wms';
+    WMS_MAP='';
   </script>
-  <script type="text/javascript" src="http://openlayers.org/en/v3.0.0/build/ol.js"></script>
+  <script type="text/javascript" src="/static/js/ol.js"></script>
   <script type="text/javascript" src="/static/fieldworkonline.js"></script>
   <script type="text/javascript" src="/static/maps.js"></script>
   <script type="text/javascript">
+    function arrayWrap(obj,property) {
+      /*
+      Returns properties of an object wrapped in an array so they can 
+      be iterated over. If the property does not exist an empty array is 
+      returned (so that any iteration code still works fine).
+      */
+      
+      if(obj.hasOwnProperty(property)) {
+        return obj[property] instanceof Array?obj[property]:[obj[property]]
+      } else {
+        return []
+      }
+      
+    }
     function renderlayer(layer) {
       /*
       Recursively renders a layer in the QGIS table of contents. This function
@@ -31,12 +45,20 @@
       var is_folder=layer.hasOwnProperty('Style')?false:true; 
       var is_visible=layer["@visible"]=="1"?true:false;
       var sub_layers=layer.Layer instanceof Array?layer.Layer:[layer.Layer]
+      var zoom_to_extent=""
       var html=''
+      if(layer.hasOwnProperty("EX_GeographicBoundingBox")) {
+        layer_extent=$.merge(
+          ol.proj.transform([parseFloat(layer.EX_GeographicBoundingBox.westBoundLongitude),parseFloat(layer.EX_GeographicBoundingBox.southBoundLatitude)], 'EPSG:4326', 'EPSG:3857'),
+          ol.proj.transform([parseFloat(layer.EX_GeographicBoundingBox.eastBoundLongitude),parseFloat(layer.EX_GeographicBoundingBox.northBoundLatitude)], 'EPSG:4326', 'EPSG:3857')
+          )
+        zoom_to_extent=' <a data-zoom-to-extent="'+layer_extent.join()+'" href="#" class="zoom-to-extent pull-right"><i class="fa fa-search" data-toggle="tooltip" data-placement="left" title="Zoom to layer"></i></a>'
+      }
       if(is_folder) {
-        /* layer is a group layer, print a folder icon */
-        html+='<li class="list-group-item"><i class="fa fa-folder-open fa-fw"></i> '+layer.Title+'<ul class="list-group">';
+        /* layer is a group layer, print a folder icon*/
+        html+='<li class="list-group-item"><i class="fa fa-folder-open fa-fw"></i> '+layer.Title+zoom_to_extent+'<ul class="list-group">';
         if(has_children) {
-          for (var i in sub_layers) { /* also fails if only one sub layer */
+          for (var i in sub_layers) {
             html+=renderlayer(sub_layers[i]);
           }
         }
@@ -45,7 +67,7 @@
         /* layer is a data layer, print the layer title and add the legend url to an array */
         legendUrl=layer.Style.LegendURL.OnlineResource["@xlink:href"]+"&LAYERTITLE=FALSE&ITEMFONTSIZE=8&BOXSPACE=1&LAYERTITLESPACE=0&SYMBOLSPACE=1"
         window.wmsLegendGraphic[layer.Name]={url:legendUrl,title:layer.Title}
-        html+='<li class="list-group-item wms-layer '+(is_visible?'wms-layer-visible':'wms-layer-hidden')+'" data-wms-layer="'+layer.Name+'"><i class="fa fa-map-marker fa-fw"></i><a href="" class="layer-active-toggle">'+layer.Title+'</a><a href="" class="layer-visibility-toggle pull-right "><i class="fa fa-toggle-on fa-fw"></i></a><div class="layer-actions"><img src="'+legendUrl+'" /></div></li>'
+        html+='<li class="list-group-item wms-layer '+(is_visible?'wms-layer-visible':'wms-layer-hidden')+'" data-wms-layer="'+layer.Name+'"><!--<i class="fa fa-map-marker fa-fw"></i>--><a href="#" class="layer-visibility-toggle" title="Toggle visibility"><i class="fa fa-toggle-on fa-fw"></i>&nbsp;'+layer.Title+zoom_to_extent+'</a><div class="layer-actions"><img src="'+legendUrl+'" /></div></li>'
       }
       return html
     }
@@ -57,24 +79,32 @@
       project, each time adding an extra depth level to the layer overview on
       the page.
       */
-      window.wmsProjectSettings=data
-      window.wmsLegendGraphic=[]
-      maplayers=$("ul#map-layers")
-      maplegend=$("ul#map-legend")
-      /*
-      The topmost layer is the project node, we don't show this one in the web
-      interface, only layers below that level. However, because sub_layers may
-      also turn out to be a single Object (in case there is only one sub layer) 
-      rather than an array of Objects (when there are more sub layers) we force
-      it to be an Array with only one item. This makes it easier to loop over.
-      */
-      var sub_layers=data.WMS_Capabilities.Capability.Layer.Layer;
-      sub_layers=sub_layers instanceof Array?sub_layers:[sub_layers];
-      for (var i in sub_layers) {
-        maplayers.append(renderlayer(sub_layers[i]))
+      if(data.hasOwnProperty("WMS_Capabilities")) {
+        window.wmsProjectSettings=data
+        window.wmsLegendGraphic=[]
+        maplayers=$("ul#map-layers")
+        maplegend=$("ul#map-legend")
+        /*
+        The topmost layer is the project node, we don't show this one in the web
+        interface, only layers below that level. However, because sub_layers may
+        also turn out to be a single Object (in case there is only one sub layer) 
+        rather than an array of Objects (when there are more sub layers) we force
+        it to be an Array with only one item. This makes it easier to loop over.
+        */
+        var sub_layers=data.WMS_Capabilities.Capability.Layer.Layer;
+        sub_layers=sub_layers instanceof Array?sub_layers:[sub_layers];
+        for (var i in sub_layers) {
+          maplayers.append(renderlayer(sub_layers[i]))
+        }
+        for (var i in window.wmsLegendGraphic) {
+          maplegend.append('<li class="list-group-item" style="padding:5px;padding-left:17px;"><strong>'+window.wmsLegendGraphic[i].title+'</strong><br /><img src="'+window.wmsLegendGraphic[i].url+'" /></li>')
+        }
       }
-      for (var i in window.wmsLegendGraphic) {
-        maplegend.append('<li class="list-group-item" style="padding:5px;padding-left:17px;"><strong>'+window.wmsLegendGraphic[i].title+'</strong><br /><img src="'+window.wmsLegendGraphic[i].url+'" /></li>')
+      if(data.hasOwnProperty("ServiceExceptionReport")) {
+        /*
+        Uhoh this isn't good...
+        */
+        alert("WMS Request failed! "+data.ServiceExceptionReport.ServiceException["@code"]+". \nAdditional information:\n"+data.ServiceExceptionReport.ServiceException["#text"])
       }
     }
     function getVisibleWmsLayers() {
@@ -94,6 +124,114 @@
       })
       return visible_wms_layers.reverse().join()
     }
+    function parseFeatureInfo(data) {
+      /*
+      Returns a block of html to fill the getFeatureInfo popup with.
+      */
+      var html=''
+      if(data.hasOwnProperty("GetFeatureInfoResponse")) {
+        var layers=arrayWrap(data.GetFeatureInfoResponse,"Layer")
+        html+=layersToRows(layers)
+      }
+      return html
+    }
+    function layersToRows(layers) {
+      var html=''
+      $.each(layers,function(index,layer){
+        var features=arrayWrap(layer,"Feature")
+        var rows=''
+        $.each(features,function(index,feature){
+          var feature_attributes=arrayWrap(feature,"Attribute")
+          rows+=attributesToRows(feature_attributes)
+        })
+        var attributes=arrayWrap(layer,"Attribute")
+        rows+=attributesToRows(attributes)
+        if(rows!='') {
+          html+="<tr style='background-color:#eee;'><td colspan='2'><strong>"+layer["@name"]+"</strong></td></tr>"+rows
+        }
+      })
+      return html
+
+    }
+    function attributesToRows(attributes) {
+      /*
+      Returns a html table rows for an array of attributes. This also checks
+      for attribute values which may be filenames (such as links to uploaded
+      images) as well as HTML links.
+      */
+      var html=''
+      $.each(attributes,function(index,attribute){
+        html+="<tr><td>"+attribute["@name"]+"</td><td>"+attributeValueParser(attribute["@value"])+"</td></tr>"
+      })
+      return html
+    }
+    function attributeValueParser(value) {
+      /*
+      Returns a parsed attribute value for in the popup. This checks for links
+      and big text chunks, that sort of stuff.
+
+      Todo: - change look & feel of large texts. (ie. show a teaser, click to
+              open a modal with the full text)
+            - check if attachments have been uploaded with a HEAD request, show
+              pics in modal and download dialog for other files.
+            - check urls using a regex
+      */
+
+      //Valid filename extensions. Ensures that values such as "12.312" are not
+      //seen as files.
+      var filename_extensions="png jpg txt doc docx xls xlsx jpeg";
+
+      //Text length to turn into a paragraph. If a lot of text is present as an
+      //attribute value (such as a detailed description of something) it is
+      //better to format it as a paragraph rather than an attribute value in a
+      //<code> element.
+      var length_max=128;
+      var length_truncate=256;
+
+      var filename_regex=/\.([0-9a-z]+)(?:[\?#]|$)/i;
+      var filename_list=value.split(",")
+      var filename_html=''
+
+      $.each(filename_list,function(index,filename){
+        var filename_match=filename.match(filename_regex);
+        if(filename_match) {
+          var filename_extension=filename_match[1].toLowerCase()
+          if($.inArray(filename_extension,filename_extensions.split(" "))!=-1) {
+            var filename_url="data?filename="+filename;
+            /*
+            To do:
+
+            It looks like this may be a valid filename. Unfortunately this 
+            javascript doesn't know what files have been uploaded, so in that
+            case do a quick request to see if this attachment exists. If so, 
+            link it, otherwise just leave the label as is.
+
+            $.ajax({
+              type: "HEAD",
+              url: filename_url,
+              success: function(message,text,response){
+                console.log("File actually exists and was uploaded... ")
+              },
+              error: function() {
+                console.log("The file was not actually uploaded :?")
+              }
+            });
+
+            */
+            filename_html+= "<i class='fa fa-paperclip'></i> <code><a href='"+filename_url+"'>"+filename+"</a></code><br/>"
+          }
+        }
+      })
+      if(filename_html=='') {
+        if(value.length>length_max) {
+          return "<p>"+value+"</p>"
+        } else {
+          return "<code>"+value+"</code>"
+        }
+      } else {
+        return filename_html
+      }
+    }
   </script>
   <!--
     Load the GetProjectSettings request from our custom WMS proxy. The proxy
@@ -104,12 +242,10 @@
     Other WMS servers obviously do not support these types of requests, but 
     for our purposes it should work just fine.
   -->
-  <script type="text/javascript" src="/wmsproxy?SERVICE=WMS&amp;VERSION=1.3&amp;REQUEST=GetProjectSettings&amp;MAP={{project.basedir}}/projectdata/map/project.qgs&amp;FORMAT=application/json&amp;JSONP=setprojectsettings"></script>
+  <script type="text/javascript" src="wms?SERVICE=WMS&amp;VERSION=1.3&amp;REQUEST=GetProjectSettings&amp;FORMAT=application/json&amp;JSONP=setprojectsettings"></script>
 {% endblock %}
 
 {% block maps %}
-    
-
     <div class="container-fluid">
         <div class="row" style="background-color:#fff;">
           <div class="col-md-3 col-sm-3">
@@ -119,7 +255,10 @@
                 <h4 class="panel-title">
                   <i class="fa fa-fw fa-bars"></i> 
                   <a data-toggle="collapse" data-parent="#accordion" href="#collapseOne"><strong>Layers</strong></a>
+                  <a data-zoom-to-extent="" href="#" id="zoom-to-project-extent" class="zoom-to-extent pull-right">Reset zoom <i class="fa fa-arrows"></i></a>
                 </h4>
+
+
               </div>
               <div id="collapseOne" class="panel-collapse collapse in" >
 
@@ -143,6 +282,7 @@
 
               </div>
             </div>
+            <!--
             <div class="panel panel-default">
               <div class="panel-heading">
                 <h4 class="panel-title">
@@ -202,6 +342,7 @@
                 </div>
               </div>
             </div>
+            -->
           </div>
           </div>
           <div class="col-md-9 col-sm-9" style="padding-right:0px;padding-left:0;">

@@ -5,7 +5,7 @@ import shutil
 import json
 import random
 
-from flask import Flask, render_template, request, redirect, abort, send_file, send_from_directory, url_for, make_response, Response
+from flask import Flask, render_template, request, redirect, abort, flash, send_file, send_from_directory, url_for, make_response, Response
 
 from flask.ext.mail import Mail
 from flask.ext.sqlalchemy import SQLAlchemy
@@ -33,6 +33,7 @@ if not os.access(app.config["DATADIR"], os.W_OK):
 
 
 print " * Database is at %s"%(app.config["SQLALCHEMY_DATABASE_URI"])
+print " * %s"%(app.config["SERVER_NAME"])
 
 # Initialize Flask extensions
 db = SQLAlchemy(app)
@@ -135,11 +136,26 @@ class Campaign(db.Model):
 	def basedir(self):
 		return os.path.join(app.config["DATADIR"],"campaigns",self.slug)
 	@property
+	def projectdata(self):
+		return os.path.join(app.config["DATADIR"],"campaigns",self.slug,"projectdata")
+	@property
 	def basemap(self):
-		projectfiles=glob.glob(os.path.join(self.basedir,"basemaps")+"/*.qgs")
+		"""
+		Returns the filename of the basemap for this project. Returns False if no basemap has been uploaded.
+		"""
+		projectfiles=glob.glob(os.path.join(self.basedir,"userdata","3-student","map")+"/cloned_project.qgs")
 		try: return projectfiles[0]
 		except: return False
+	@property
+	def enrolled_users(self):
+		"""
+		Returns the number of users in this project.
+		"""
+		return len(self.users)
 	def userdata(self,user_id):
+		"""
+		Returns the userdata directory for a particular user in this fieldwork project.
+		"""
 		user=User.query.filter(User.id==int(user_id)).first()
 		userdir=os.path.join(self.basedir,"userdata",user.slug)
 		if not os.path.isdir(userdir):
@@ -152,21 +168,40 @@ class Campaign(db.Model):
 		return userdir
 	def enroll_user(self,user_id):
 		"""
+		Enrolls a user in this fieldwork campaign.
+
 		enroll user <user_id> in this project.
 
 		- add the reference in the database
 		- create the user directory in the project's userdata folder
 		- clone the basemap into the userdata 
 		"""
-		user=User.query.filter(User.id==int(user_id)).first()
-		userdir=self.userdata(user_id)
-		self.users.append(user)
-		db.session.commit()
+		try:
+			user=User.query.filter(User.id==int(user_id)).first()
+			userdir=self.userdata(user_id)
+			self.users.append(user)
+			db.session.commit()
+			return True
+		except Exception as e:
+			return False
+	def features(self,user_id):
+		"""
+		Returns an overview of the feature data which has been uploaded by the user (via spreadsheets) and is saved in the "features.sqlite" file in the userdata directory.
+		"""
+		try:
+			from pyspatialite import dbapi2 as spatialite
+			conn = spatialite.connect(os.path.join(self.userdata(user_id),"features.sqlite"))
+			cur = conn.cursor()
+			rs = cur.execute("SELECT name,title,features,description FROM fwo_metadata")
+			for row in rs: yield row
+		except Exception as e:
+			flash("Something went wrong trying try create the features table. Probably no features have been uploaded yet in a spreadsheet.","error")
 
 	def attachments(self,user_id):
+		"""
+		Returns a list of attachments that the specified user has uploaded to this project. Use sorted(glob.glob(...), key=os.path.getmtime) to sort by modification time instead.
+		"""
 		files=sorted(glob.glob(os.path.join(self.userdata(user_id),"attachments")+"/*.*"))
-		#use sorted(..., key=os.path.getmtime) to sort by modification time instead
-		flist=[]
 		for f in files:
 			try:
 				(head,tail)=os.path.split(f)
@@ -175,53 +210,53 @@ class Campaign(db.Model):
 				elif extension.endswith((".xls",".xlsx")): filetype="spreadsheet" 
 				elif extension.endswith((".doc",".docx",".pdf",".txt")): filetype="document"
 				else: filetype="other"
-				flist.append({
+				yield {
 					'name':tail,
 					'type':filetype,
 					'extension':extension,
 					'size':os.path.getsize(f)
-				})
+				}
 			except Exception as e:
 				pass
-		return flist
-	@property
-	def table_of_contents(self):
-		"""
-		Returns a table of contents and map preferences for a project. The table of contents is read from the QGIS project of the user and stored in the "toc" node of the returned dict. Other nodes store the preferences which can be modified on a per user (viewer) basis, such as the layer visibilities, active layer, zoom level, location, and other map settings. This ensures that when a user is toggling layers on and off and panning in the map, that when they return to the map view the same view is presented as last time.
-		"""
-		return False
-		# _QgsLayerTypes=['vector','raster','plugin'] 
-		# proj=QgsProject.instance()
-		# proj.read(QFileInfo(self.basemap))
-		# def node_to_dict(node):
-		# 	nodes=[]
-		# 	for child in node.children():
-		# 		if isinstance(child, QgsLayerTreeGroup):
-		# 			nodes.append({
-		# 				'node':'group',
-		# 				'visible':False if child.isVisible()==0 else True,
-		# 				'collapse':False,
-		# 				'name':str(child.name()),
-		# 				'children':node_to_dict(child)
-		# 			})
-		# 		elif isinstance(child, QgsLayerTreeLayer):
-		# 			lyr=child.layer()
-		# 			nodes.append({
-		# 				'node':'layer',
-		# 				'visible':False if child.isVisible()==0 else True,
-		# 				'collapse':False,
-		# 				'name':str(child.layerName()),
-		# 				'type':_QgsLayerTypes[int(lyr.type())],
-		# 				'children':[]
-		# 			})
-		# 	return nodes
-		# return node_to_dict(proj.layerTreeRoot())
 
-	def add_file(self,file_path):
-		"""
-		Add a file to a project.
-		"""
-		pass
+	# @property
+	# def table_of_contents(self):
+	# 	"""
+	# 	Returns a table of contents and map preferences for a project. The table of contents is read from the QGIS project of the user and stored in the "toc" node of the returned dict. Other nodes store the preferences which can be modified on a per user (viewer) basis, such as the layer visibilities, active layer, zoom level, location, and other map settings. This ensures that when a user is toggling layers on and off and panning in the map, that when they return to the map view the same view is presented as last time.
+	# 	"""
+	# 	return False
+	# 	# _QgsLayerTypes=['vector','raster','plugin'] 
+	# 	# proj=QgsProject.instance()
+	# 	# proj.read(QFileInfo(self.basemap))
+	# 	# def node_to_dict(node):
+	# 	# 	nodes=[]
+	# 	# 	for child in node.children():
+	# 	# 		if isinstance(child, QgsLayerTreeGroup):
+	# 	# 			nodes.append({
+	# 	# 				'node':'group',
+	# 	# 				'visible':False if child.isVisible()==0 else True,
+	# 	# 				'collapse':False,
+	# 	# 				'name':str(child.name()),
+	# 	# 				'children':node_to_dict(child)
+	# 	# 			})
+	# 	# 		elif isinstance(child, QgsLayerTreeLayer):
+	# 	# 			lyr=child.layer()
+	# 	# 			nodes.append({
+	# 	# 				'node':'layer',
+	# 	# 				'visible':False if child.isVisible()==0 else True,
+	# 	# 				'collapse':False,
+	# 	# 				'name':str(child.layerName()),
+	# 	# 				'type':_QgsLayerTypes[int(lyr.type())],
+	# 	# 				'children':[]
+	# 	# 			})
+	# 	# 	return nodes
+	# 	# return node_to_dict(proj.layerTreeRoot())
+
+	# def add_file(self,file_path):
+	# 	"""
+	# 	Add a file to a project.
+	# 	"""
+	# 	pass
 
 class CampaignUsers(db.Model):
 	id = db.Column(db.Integer(), primary_key=True)
@@ -235,44 +270,6 @@ db_adapter = SQLAlchemyAdapter(db,  User)       # Select database adapter
 user_manager = UserManager(db_adapter, app)     # Init Flask-User and bind to app
 
 
-
-
-@app.route("/wmsproxy")
-def wmsproxy():
-	"""
-	This acts as a HTTP proxy for the WMS. There are a few reasons for going through the trouble of making a proxy:
-
-	- Due to same origin policy the GetFeatureInfo requests need to originate on the same host. By having having a proxy this is guaranteed and it is possible to switch WMS servers on the fly if the need arises.
-	- Sometimes QGIS server (if CRS restrictions have not been set manually in the project preferences) will return in XML a list of hundreds of allowed CRSes for each layer. This seriously bloats the GetProjectInfo request. In this proxy we can manually limit the allowed CRSes to ensure the document does not become huge.
-	- QGIS server does not support json responses! Since we are handling a lot of these WMS requests using JavaScript (also the GetFeatureInfo requests) it would be a lot easier, faster, and result in cleaner code, if the WMS server just returned JSON documents. Using this proxy we can add json support if the request argument FORMAT is set to "application/json", and do the conversion serverside with xmltodict. A JSONP callback argument is also supported.
-	- We can camouflage the MAP parameter. This usually takes a full pathname to the map file. However, we dont want to reveal this to the world and let everybody mess about with it. Therefore we can override the MAP parameter in the proxy from the URL, that way the URL for a fieldwork WMS server will be /projects/fieldwork-demo/3/wms?<params> which is a lot neater than /cgi-bin/qgisserv.fcgi?MAP=/var/fieldwork-data/.....etc. There will be no MAP attribute visible to the outside in that case since it is added only on the proxied requests.
-	- There are some opportunities for caching/compressing WMS requests at a later time if we use this method
-	"""
-	import xmltodict
-	requestparams=dict(request.args) #we need something which is mutable...
-	jsonp=request.args.get("JSONP","")
-	if(jsonp):
-		requestparams.pop("JSONP") #never send a JSONP parameter to the qgis server
-	if(request.args.get("FORMAT","")=="application/json"):
-		requestparams.update({'FORMAT':"text/xml"}) #always request xml from qgis server
-	if(request.args.get("INFO_FORMAT","")=="application/json"):
-		requestparams.update({'INFO_FORMAT':"text/xml"}) #always request xml from qgis server
-	r=requests.get(app.config["WMS_SERVER_URL"],params=requestparams)
-	print r.url
-	if r.status_code==200:
-		if r.headers['content-type']=="text/xml" and ( request.args.get("FORMAT","")=="application/json" or request.args.get("INFO_FORMAT","")=="application/json"):
-			#if json was requested and we received xml from the server, then convert it...
-			jsonresponse=json.dumps(xmltodict.parse(r.text.replace(app.config["WMS_SERVER_URL"],request.base_url)), sort_keys=False,indent=4, separators=(',', ': '))
-			jsonresponse=jsonp+"("+jsonresponse+")" if jsonp!="" else jsonresponse
-			return Response(jsonresponse,mimetype="application/json")
-		elif r.headers['content-type']=="text/xml":
-			#if xml was requested and xml was received, then just update the server urls in the response to the url of the wms proxy
-			return Response(r.text.replace(app.config["WMS_SERVER_URL"],request.base_url),mimetype=r.headers['content-type'])
-		else:
-			#all other cases don't modify anything and just return whatever qgis server responded with
-			return Response(r.content,mimetype=r.headers['content-type'])
-	else:
-		return Response("<pre>WMS server at %s returned status %i.</pre>"%(app.config["WMS_SERVER_URL"],r.status_code),mimetype="text/html")
 
 @app.route("/")
 @login_required
@@ -304,14 +301,21 @@ def home():
 
 
 
-@app.route("/admin")
+@app.route("/admin",methods=["GET","POST"])
 @login_required
 @roles_required("administrator")
 def admin():
-	return render_template("admin.html",
-		users=User.query.all(),
-		campaigns=Campaign.query.all()
-	)
+	if request.method=="POST":
+		if request.form.get("action","")=="project_create":
+			try:
+				campaign = Campaign(name=request.form.get("project_name"),description=request.form.get("project_description"))
+				db.session.add(campaign)
+				db.session.commit()
+				flash("Created a new project <code>%s</code>"%(campaign.name),"ok")
+			except Exception as e:
+				db.session.rollback()
+				flash("Failed to create new project. Verify that the name and project slug do not exist yet.","error")
+	return render_template("admin.html",users=User.query.all(),campaigns=Campaign.query.all())
 
 @app.route("/status")
 def status():
@@ -328,34 +332,48 @@ def profile_page():
 @app.route("/projects/",methods=["GET","POST"])
 @login_required
 def project_list():
-	messages=[]
 	if request.method=="POST":
-		invite_key=request.form.get("invite_key","")
-		invite_result=current_user.enroll_with_invite_key(invite_key)
-		if invite_result:
-			messages.append("You have been enrolled in a project.")
+		if current_user.enroll_with_invite_key(request.form.get("invite_key","")):
+			flash("You have been enrolled in a new fieldwork project!","ok")
 		else:
-			messages.append("Your invite key could not be found.")
-
+			flash("Sorry, no fieldwork project could be found with that invite key.","error")
 	current_projects=current_user.current_projects
 	num_of_projects=len(current_projects)
-	return render_template("project-list.html",project_list=current_projects,messages=messages)
+	return render_template("project-list.html",project_list=current_projects)
 
 
 
-@app.route("/projects/<slug>/")
+@app.route("/projects/<slug>/",methods=["GET","POST"])
 @login_required
 def project_userlist(slug=None):
 	"""
-	Lists the users which are participating in this project.
+	Shows the main project view for supervisors. It has a list of users and links to enroll other users which are not participating in the project yet. It is also possible to update the basemap for the project here by uploading a zip file (which will be unzipped) or individual files into the project's basemap directory.
+
+	If this view is requested by a student user, the user is redirected directly to the student's project page.
 	"""
 	project=Campaign.query.filter_by(slug=slug).first_or_404()
 	if current_user.is_student:
 		return redirect(url_for('project_page',slug=project.slug,user_id=current_user.id))
-	else:
-		users=User.query.filter(User.campaigns.contains(project)).all()
-		enrollable_users=User.query.filter(~User.campaigns.contains(project)).all()
-		return render_template("project-userlist.html",project=project,users=users,enrollable_users=enrollable_users)
+	if request.method=="POST":
+		f = request.files['uploadfile']
+		if f:
+			upload_file=os.path.join(project.projectdata,"map",f.filename)
+			f.save(upload_file)
+			if f.filename.endswith(".zip"):
+				try:
+					import zipfile
+					with zipfile.ZipFile(upload_file) as zf:
+						zip_filelist=zf.namelist()
+						zip_details="Extracted %s files: <code>"%(len(zip_filelist))+"</code> <code>".join(zip_filelist)+"</code>"
+						zf.extractall(os.path.join(project.projectdata,"map"))
+						flash("Zip file detected! %s"%zip_details,"ok")
+				except Exception as e:
+					flash("Zip file could not be extracted! Hint: %s"%(e),"error")
+			flash("File <code>%s</code> was uploaded to the project basemap."%(f.filename),"ok")
+
+	users=User.query.filter(User.campaigns.contains(project)).all()
+	enrollable_users=User.query.filter(~User.campaigns.contains(project)).all()
+	return render_template("project-userlist.html",project=project,users=users,enrollable_users=enrollable_users)
 
 
 
@@ -366,46 +384,94 @@ def project_page(slug=None,user_id=None):
 	user=User.query.filter_by(id=user_id).first_or_404()
 	return render_template("project.html",project=project,user=user)
 
+@app.route("/projects/<slug>/<user_id>/wms")
+def wmsproxy(slug=None,user_id=None):
+	"""
+	This view acts as a HTTP proxy for the WMS server. There are a few reasons for going through the trouble of making a proxy:
+
+	- Due to same origin policy the GetFeatureInfo requests need to originate on the same host. By having having a proxy this is guaranteed and it is possible to switch WMS servers on the fly if the need arises.
+	- Sometimes QGIS server (if CRS restrictions have not been set manually in the project preferences) will return in XML a list of hundreds of allowed CRSes for each layer. This seriously bloats the GetProjectInfo request. In this proxy we can manually limit the allowed CRSes to ensure the document does not become huge.
+	- QGIS server does not support json responses! Since we are handling a lot of these WMS requests using JavaScript (also the GetFeatureInfo requests) it would be a lot easier, faster, and result in cleaner code, if the WMS server just returned JSON documents. Using this proxy we can add json support if the request argument FORMAT is set to "application/json", and do the conversion serverside with xmltodict. A JSONP callback argument is also supported.
+	- We can camouflage the MAP parameter. This usually takes a full pathname to the map file. However, we dont want to reveal this to the world and let everybody mess about with it. Therefore we can override the MAP parameter in the proxy from the URL, that way the URL for a fieldwork WMS server will be /projects/fieldwork-demo/3/wms?<params> which is a lot neater than /cgi-bin/qgisserv.fcgi?MAP=/var/fieldwork-data/.....etc. There will be no MAP attribute visible to the outside in that case since it is added only on the proxied requests.
+	- There are some opportunities for caching/compressing WMS requests at a later time if we use this method
+	- We can limit access to the fieldwork data to only logged in users, or allow a per-project setting of who should be able to access the wms data.
+	"""
+	project=Campaign.query.filter_by(slug=slug).first_or_404()
+	user=User.query.filter_by(id=user_id).first_or_404()
+
+	import xmltodict
+	requestparams=dict(request.args) #we need something which is mutable...
+	#requestparams.pop("MAP") #don't send the map param
+	requestparams.update({'MAP':project.basemap})
+
+	jsonp=request.args.get("JSONP","")
+	if(jsonp):
+		requestparams.pop("JSONP") #never send a JSONP parameter to the qgis server
+	if(request.args.get("FORMAT","")=="application/json"):
+		requestparams.update({'FORMAT':"text/xml"}) #always request xml from qgis server
+	if(request.args.get("INFO_FORMAT","")=="application/json"):
+		requestparams.update({'INFO_FORMAT':"text/xml"}) #always request xml from qgis server
+	r=requests.get(app.config["WMS_SERVER_URL"],params=requestparams)
+	print r.url
+	if r.status_code==200:
+		if r.headers['content-type']=="text/xml" and ( request.args.get("FORMAT","")=="application/json" or request.args.get("INFO_FORMAT","")=="application/json"):
+			#if json was requested and we received xml from the server, then convert it...
+			jsonresponse=json.dumps(xmltodict.parse(r.text.replace(app.config["WMS_SERVER_URL"],request.base_url)), sort_keys=False,indent=4, separators=(',', ': '))
+			jsonresponse=jsonp+"("+jsonresponse+")" if jsonp!="" else jsonresponse
+			return Response(jsonresponse,mimetype="application/json")
+		elif r.headers['content-type']=="text/xml":
+			#if xml was requested and xml was received, then just update the server urls in the response to the url of the wms proxy
+			return Response(r.text.replace(app.config["WMS_SERVER_URL"],request.base_url),mimetype=r.headers['content-type'])
+		else:
+			#all other cases don't modify anything and just return whatever qgis server responded with
+			return Response(r.content,mimetype=r.headers['content-type'])
+	else:
+		return Response("<pre>WMS server at %s returned status %i.</pre>"%(app.config["WMS_SERVER_URL"],r.status_code),mimetype="text/html")
+
+
 @app.route("/projects/<slug>/<user_id>/enroll")
 @login_required
 def project_enroll(slug=None,user_id=None):
 	project=Campaign.query.filter_by(slug=slug).first_or_404()
 	user=User.query.filter_by(id=user_id).first_or_404()
 	project.enroll_user(user.id)
+	flash("User <code>%s</code> has been enrolled in the fieldwork project %s"%(user.username,project.name),"ok")
 	return redirect(url_for('project_userlist',slug=slug))
 
-@app.route("/projects/<slug>/<user_id>/data",methods=["GET","POST"])
+@app.route("/projects/<slug>/<user_id>/file",methods=["GET","POST","HEAD"])
+@login_required
+def project_file(slug,user_id):
+	project=Campaign.query.filter_by(slug=slug).first_or_404()
+	user=User.query.filter_by(id=user_id).first_or_404()
+	userdata=project.userdata(user.id)
+	if request.method=="HEAD" or request.method=="GET":
+		filename=request.args.get("filename","")
+		if filename != "":
+			as_attachment = True if not filename.lower().endswith((".png",".jpg",".jpeg")) else False
+			return send_from_directory(os.path.join(userdata,"attachments"), filename, as_attachment=as_attachment)
+	if request.method=="POST":
+		try:
+			from utils import excel_parser
+			f = request.files['uploadfile']
+			if f:
+				upload_file=os.path.join(userdata,"attachments",f.filename)
+				f.save(upload_file)
+				if f.filename.endswith((".xls",".xlsx")):
+					spatialite_file=os.path.join(userdata,"features.sqlite")
+					excel_parser(upload_file,spatialite_file)
+			flash("Upload and processing of file <code>%s</code> completed."%(f.filename),"ok")
+		except Exception as e:
+			flash("An error occurred during the upload. Hint: %s"%(e),"error")
+	return redirect(url_for('upload',slug=slug,user_id=user_id))
+
+@app.route("/projects/<slug>/<user_id>/data",methods=["GET"])
 @login_required
 def upload(slug,user_id):
 	project=Campaign.query.filter_by(slug=slug).first_or_404()
 	user=User.query.filter_by(id=user_id).first_or_404()
-	userdata=project.userdata(user.id)
-	if request.method=="POST":
-		messages=[]
-		from utils import excel_parser
-		f = request.files['uploadfile']
-		if f:
-			upload_file=os.path.join(userdata,"attachments",f.filename)
-			f.save(upload_file)
-			if f.filename.endswith((".xls",".xlsx")):
-				spatialite_file=os.path.join(userdata,"features.sqlite")
-				(messages,status,points)=excel_parser(upload_file,spatialite_file)
-			else:
-				messages=[]
-				points=[]
-		return render_template("upload-accept.html",project=project,user=user,messages=messages,points=points)
-	else:
-		#allow a HEAD request here just to let clients see if the file exists...
-		filename=request.args.get("filename","")
-		if filename != "":
-			#Show a download dialog if the file is not a picture
-			as_attachment = True if not filename.lower().endswith((".png",".jpg",".jpeg")) else False
-			return send_from_directory(os.path.join(userdata,"attachments"), filename, as_attachment=as_attachment)
-		else:
-			attachments=project.attachments(user_id)
-			return render_template("upload.html",project=project,user=user,attachments=attachments)
-
-
+	attachments=project.attachments(user_id)
+	features=project.features(user_id)
+	return render_template("upload.html",project=project,user=user,attachments=attachments,features=features)
 
 @app.route("/projects/<slug>/<user_id>/feedback")
 @login_required
@@ -427,7 +493,8 @@ def project_collaborate(slug,user_id):
 def project_maps(slug,user_id):
 	project=Campaign.query.filter_by(slug=slug).first_or_404()
 	user=User.query.filter_by(id=user_id).first_or_404()
-
+	if not project.basemap:
+		flash("No basemap has been uploaded by project administrator yet.","error")
 	#project_toc=project.table_of_contents
 	#return render_template("maps.html",project=project,user=user,toc=project_toc)
 	return render_template("maps.html",project=project,user=user)
@@ -479,5 +546,6 @@ def install():
 
 if __name__ == "__main__":
     app.run(debug=True)
+
 
 

@@ -10,7 +10,18 @@
 		<strong>Upload new files (spreadsheets, attachments)</strong>
 	</div>
 	<div class="panel-body">
-		<form role="form" action="" method=post enctype="multipart/form-data">
+	<p>
+	Please keep the following in mind when uploading spreadsheets:
+	<ul>
+		<li>Uploaded data is overwritten, not appended to!</li>
+		<li>The name of the sheet is used to identify the feature layer, make sure it's unique and has a clear name.</li>
+		<li>Ensure that any spreadsheet has header information (column or attribute names) on the first row, and that any rows below that are features.</li>
+		{% if current_user.is_admin %}
+		<li>You are currently an administrator working in another user's workspace!</li>
+		{% endif %}
+	</ul>
+	</p>
+		<form role="form" action="file" method="post" enctype="multipart/form-data">
 		<div class="form-group">
 			<input type="file" name="uploadfile">
 		</div>
@@ -21,9 +32,40 @@
 
 <div class="panel panel-default">
 	<div class="panel-heading">
+		<strong>Overview of uploaded feature data layers</strong>
+	</div>
+	<div class="panel-body" style="padding:0;">
+		{% if not attachments %}
+			<p>No points have been uploaded yet.</p>
+		{% endif %}
+		<table class="table">
+		<tr>
+			<td style="border:0;padding-left:15px;">Layer Name</td>
+			<td style="border:0">Description</td>
+			<td style="border:0">Attributes</td>
+		</tr>
+		
+		{% for row in features %}
+		<tr>
+			<td style="padding-left:15px;">
+			<nobr><i class="fa fa-database"></i> <code>{{row[0]}}</code> ({{row[2]}} points)</nobr>
+			</td>
+			<td>{{row[1]}}</td>
+			<td>{{row[3]|safe}}</td>
+		</tr>
+		{% endfor %}
+		</table>
+	</div>
+</div>
+
+<div class="panel panel-default">
+	<div class="panel-heading">
 		<strong>Overview of uploaded files</strong>
 	</div>
 	<div class="panel-body" style="padding:0;">
+		{% if not attachments %}
+			<p>No attachments have been uploaded yet.</p>
+		{% endif %}
 		<table class="table">
 		<tr>
 			<td style="border:0;padding-left:15px;">Filename</td>
@@ -44,7 +86,7 @@
 			<i class="fa fa-file-o"></i> 
 			{% endif %}
 
-			<a href="?filename={{file["name"]}}">{{file["name"]}}</a></td>
+			<a href="file?filename={{file["name"]}}">{{file["name"]}}</a></td>
 			<td>{{file["type"]}}</td>
 			<td>{{file["size"]}}</td>
 		</tr>

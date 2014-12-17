@@ -1,14 +1,6 @@
 
 $(function() {
-	// this gets run after all the content is loaded...
 
-	/*
-	$(window).resize(function() {
-		map_height=$(window).height()-$('#statusbar').height()-$('nav').height()
-		$('#map').height(map_height)
-		//$( "#log" ).append( "<div>Handler for .resize() called.</div>" );
-	});
-	*/
 	$("a.layer-visibility-toggle").click(function(){
 		layer=$(this).parent("li.wms-layer")
 		if(layer.hasClass("wms-layer-visible")) {
@@ -19,12 +11,22 @@ $(function() {
 		wmsLayer.getSource().updateParams({'LAYERS':getVisibleWmsLayers()})
 		return false;
 	});
+	/*
 	$("a.layer-active-toggle").click(function(){
 		$("li.wms-layer").removeClass("wms-layer-active")
 		layer=$(this).parent("li.wms-layer")
 		layer.addClass("wms-layer-active")
 		return false;
 	});
+	*/
+	$("a.zoom-to-extent").click(function(){
+		extent=$(this).data("zoom-to-extent").split(",").map(parseFloat)
+		console.log(extent)
+		window.map.getView().fitExtent(extent, window.map.getSize());
+		return false;
+	})
+	$('[data-toggle="tooltip"]').tooltip()
+
 	var wmsSource=new ol.source.ImageWMS({
 		url: WMS_URL,
 		params: { 'LAYERS': getVisibleWmsLayers(), 'map': WMS_MAP }
@@ -69,28 +71,41 @@ closer.onclick = function() {
 var overlay = new ol.Overlay({
   element: container
 });
+var scaleLineControl = new ol.control.ScaleLine();
 
-	var map = new ol.Map({
-		target: 'map',
-		layers: [backgroundLayer,wmsLayer],
-		overlays: [overlay],
-		view: wmsView
-	});
+window.map = new ol.Map({
+	target: 'map',
+	layers: [backgroundLayer,wmsLayer],
+	overlays: [overlay],
+	view: wmsView,
+	controls: ol.control.defaults().extend([
+		new ol.control.ScaleLine()
+	])
+});
+
+
+//ol.proj.transform([5.721586,44.42], 'EPSG:4326', 'EPSG:3857')
+//ex=ol.extent.boundingExtent([ol.proj.transform([2.,2.], 'EPSG:4326', 'EPSG:3857'),ol.proj.transform([11.,11.], 'EPSG:4326', 'EPSG:3857')])
+//map.getView().fitExtent(ex, map.getSize());
 
 
 
 map.on('singleclick', function(evt) {
 	var viewTweak=5;//set sensitivity of the click area
 	var viewResolution = (viewTweak*wmsView.getResolution());
-	var url = wmsSource.getGetFeatureInfoUrl(evt.coordinate, viewResolution, 'EPSG:3857',{'INFO_FORMAT': 'text/xml'});
+	var url = wmsSource.getGetFeatureInfoUrl(evt.coordinate, viewResolution, 'EPSG:3857',{'INFO_FORMAT': 'application/json'});
 	if(url) {
+		console.log("getFeatureInfo: "+url)
 		$.ajax({url:url}).done(function(data){
+			
+
 			//empty the attribute value list
 			$('#attribute-values').html("")
 
 			//collapse all the things
 
-			html=""
+			var html=parseFeatureInfo(data)
+/*
 			$(data).find("Layer").each(function(){
 				layer=$(this)
 				feats=layer.find("Feature")
@@ -123,7 +138,7 @@ map.on('singleclick', function(evt) {
 				}
 
 
-			})
+			})*/
 			overlay.setPosition(evt.coordinate);
 			content.innerHTML = '<table class="table table-condensed table-bordered" style="margin:0;margin-top:17px;font-size:0.8em;">'+html+'</table>';
 			container.style.display = 'block';

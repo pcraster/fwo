@@ -4,13 +4,13 @@ from shapely.geometry import Point
 
 from pyspatialite import dbapi2 as db
 
+from flask import flash
 
 def attribute_type_predictor(attribute_vals):
 	"""
-	Pass a list of values and this function will predict what type of data best matches the non-empty values in the list. The possible data types match those of an sqlite database.
+	Pass a list of values and this function will predict what spatialite data type best matches the non-empty values in the list. The possible data types match those of an sqlite database.
 
-	Possible return values:
-		INTEGER,REAL,TEXT
+	Returns a string 'TEXT','INTEGER', or 'REAL'
 	"""
 	type_allowed=['TEXT','INTEGER','REAL']
 	type_counts={}
@@ -66,7 +66,7 @@ def attribute_values_sanitizer(attribute_vals,data_type):
 
 def attribute_uniques(attribute_vals):
 	"""
-	Returns the number of unique values. Can be used to estimate whether a data column contains categorical data. Maybe with a ratio of unique values/total values.
+	Returns the number of unique non-None values. Can be used to estimate whether a data column contains categorical data. Maybe with a ratio of unique values/total values.
 	"""
 	return len(set([v for v in attribute_vals if v != None]))
 
@@ -81,39 +81,22 @@ def excel_parser(filename,spatialite_file):
 		cur.executescript("""
 			CREATE TABLE IF NOT EXISTS fwo_metadata (
 				name TEXT NOT NULL PRIMARY KEY,
-				title TEXT NOT NULL
+				title TEXT NOT NULL,
+				features INTEGER,
+				description TEXT
 			)
 		""")
-		messages.append({
-			'message': "Loading file <code>%s</code>"%(filename),
-			'type': "INFO",
-			'passed': True
-		})
+		flash("Loaded file <code>%s</code>"%(filename),"debug")
 	except Exception as e:
-		messages.append({
-			'message': "Could not or create metadata tables in <code>%s</code>"%(filename),
-			'type': "INFO",
-			'passed': False,
-			'hint':e
-		})
-		return (messages,False,[])
+		flash("Could not open or create metadata tables in sqlite file <code>%s</code>. Hint: %s"%(spatialite_file,e),"error")
+		return False
 	try:
 		book=xlrd.open_workbook(filename)
 		sheets=book.sheet_names()
-		messages.append({
-			'message': "Found a bunch of sheets: %s"%("<code>"+"</code>,<code>".join(sheets)+"</code>"),
-			'type': "INFO",
-			'passed': True
-		})
+		flash("Found %i sheet(s): %s"%(len(sheets),"<code>"+"</code>,<code>".join(sheets)+"</code>"),"debug")
 	except Exception as e:
-		print e
-		messages.append({
-			'message': "Could not open the workbook (<code>%s</code>) with the xlrd module!"%(filename),
-			'type': "ERROR",
-			'passed': False,
-			'hint':e
-		})
-		return (messages,False,[])
+		flash("Could not open the workbook <code>%s</code> with Python's xlrd module! Hint: %s"%(filename,e),"error")
+		return False
 
 	for i,sheetname in enumerate(sheets):
 		sheet=book.sheet_by_index(i)
@@ -126,6 +109,7 @@ def excel_parser(filename,spatialite_file):
 		good_headers=[]
 		bad_headers=[]
 		header_list=[]
+
 		for col_ix,header in enumerate(map(str,header_vals)):
 			cleaned_header=header
 			try:
@@ -146,9 +130,9 @@ def excel_parser(filename,spatialite_file):
 
 			try:
 				cleaned_header=re.sub(r'\W+',' ',cleaned_header).lower()	#lowercase and remove non-word chars
-				cleaned_header="_".join(map(str,cleaned_header.split()))				#replace whitespace with _
+				cleaned_header="_".join(map(str,cleaned_header.split()))	#replace any consecutive whitespace with _
 				if cleaned_header not in good_headers and len(cleaned_header)>0:
-					#this is a header we want to use and turn into a data attribute!
+					#this is a valid header we want to use and turn into a data attribute!
 					good_headers.append(cleaned_header)
 					#data for this attribute
 					header_list.append({
@@ -160,60 +144,37 @@ def excel_parser(filename,spatialite_file):
 						'datatype':None,
 						'datavalues':[]
 					})
+					#if this header matches the regexp for defining the lat and lon
+					#colums, set the col_ix_lat or col_ix_lon variable which defines
+					#which column (i.e. item in header_list) is used for trying to
+					#make points later..
+					if not col_ix_lat and re.match(lat_regex,cleaned_header):
+						col_ix_lat=len(header_list)-1
+					if not col_ix_lon and re.match(lon_regex,cleaned_header):
+						col_ix_lon=len(header_list)-1
 				else:
 					bad_headers.append({
 						'original_header':header,
 						'cleaned_header':cleaned_header,
 						'column_index':col_ix
 					})
-				#locate the headers used for the point location
-				#for header_section in cleaned_header.split():
-				if not col_ix_lat and re.match(lat_regex,cleaned_header):
-					col_ix_lat=col_ix
-				if not col_ix_lon and re.match(lon_regex,cleaned_header):
-					col_ix_lon=col_ix
-			except Exception as e:
-				messages.append({
-					'message': "Wow you managed to break the script in some other novel way. Well done! It choked trying to parse header column <code>%i</code> in sheet <code>%s</code>. Extra hint: %s"%(col_ix,sheetname,e),
-					'type': "INFO",
-					'passed': False
-				})
-		if col_ix_lon==None or col_ix_lat==None:
-			#no lat and lons, nothing to see in this sheet! move on!
-			messages.append({
-				'message': "Loaded sheet <code>%s</code> but could not find any valid latitude/longitude columns."%(sheetname),
-				'type': "INFO",
-				'passed': False
-			})
-		else:
-			#we got lat lon columns! lets make a table with points out of it!
-			messages.append({
-				'message': "Loaded sheet <code>%s</code> and found latitude and longitude headers in columns <code>%i</code> and <code>%i</code>."%(sheetname,col_ix_lat,col_ix_lon),
-				'type': "INFO",
-				'passed': True
-			})
-			messages.append({
-				'message': "Found %i headers that look good and will be turned into attributes of the data point. They are: %s"%(len(good_headers),"<code>"+"</code>, <code>".join(good_headers)+"</code>"),
-				'type': "INFO",
-				'passed': True
-			})
-			for h in bad_headers:
-				messages.append({
-					'message': "The header/attribute in column <code>%i</code> with value <code>%s</code> was ignored because it was empty, contained only strange characters, or was the same as another column header!"%(h["column_index"],h["cleaned_header"]),
-					'type': "INFO",
-					'passed': False
-				})
 
-			for h in header_list:
+			except Exception as e:
+				flash("Wow you managed to break the script in some other novel way. Well done! It choked trying to parse header column <code>%i</code> in sheet <code>%s</code>. Extra hint: %s"%(col_ix,sheetname,e),"error")
+
+		if col_ix_lon==None or col_ix_lat==None:
+			flash("Loaded sheet <code>%s</code> but could not find any valid latitude/longitude columns."%(sheetname),"error")
+		else:
+			flash("Loaded sheet <code>%s</code> and found latitude and longitude headers in columns <code>%i</code> and <code>%i</code>."%(sheetname,col_ix_lat,col_ix_lon),"info")
+			flash("Found %i headers that look good and will be turned into attributes of the data point. They are: %s"%(len(good_headers),"<code>"+"</code>, <code>".join(good_headers)+"</code>"),"info")
+			for h in bad_headers:
+				flash("The header/attribute in column <code>%i</code> with value <code>%s</code> &nbsp;was ignored because it was empty, contained only strange characters, or was the same as another column header!"%(h["column_index"],h["cleaned_header"]),"debug")
+			for ix,h in enumerate(header_list):
 				attribute_vals=sheet.col_values(h["column_index"])
 				h["datatype"]=attribute_type_predictor(attribute_vals[1:]) #don't include the header...
 				h["attribute_values"]=attribute_values_sanitizer(attribute_vals[1:],h["datatype"])
 				h["attribute_uniques"]=attribute_uniques(h["attribute_values"])
-				messages.append({
-					'message': "Attribute <code>%s</code> was predicted to have datatype <code>%s</code> with <code>%i</code> total entries, of which <code>%s</code> values were unique."%(h["header"],h["datatype"],len(h["attribute_values"]),h["attribute_uniques"]),
-					'type': "INFO",
-					'passed': True
-				})
+				flash("Values for attribute <code>%s</code> (in <code>header_list[%s]</code>) was predicted to have datatype <code>%s</code> with <code>%i</code> total entries, of which <code>%s</code> values were unique."%(h["header"],ix,h["datatype"],len(h["attribute_values"]),h["attribute_uniques"]),"debug")
 
 			#create a table name for this sheet. the name needs to be unique in this database and not contain any funny characters. so, keep track of the tablenames we've used in the tablenames variable, and if a proposed table name exists already, keep appending a number to the end until it finds one that doesn't.
 			tablename=re.sub(r'\W+',' ',sheetname).lower()
@@ -242,19 +203,21 @@ def excel_parser(filename,spatialite_file):
 			conn.commit()
 
 			#compile a list of georeferenced points
+			num_points=0
 			for n,(lat,lon) in enumerate(zip(header_list[col_ix_lat]["attribute_values"],header_list[col_ix_lon]["attribute_values"])):
 				try:
-					point=Point(lon,lat) #will raise an exception if lon,lat are None
+					point=Point(lon,lat) #will raise an exception if lon,lat are None or some other incompatible value
 					attr_values=[header["attribute_values"][n] for header in header_list]
 					attr_names=",".join([header["header"] for header in header_list])
 					point_sql="INSERT INTO %s (%s,geom) VALUES (%s,GeomFromText('%s',4326))"%(tablename,attr_names,",".join("?"*len(attr_values)),point.wkt)
 					cur.execute(point_sql,attr_values)
+					num_points+=1
 				except Exception as e:
-					messages.append({
-						'message': "Failed to convert row <code>%i</code> to a point. Lat: <code>%s</code> Lon:<code>%s</code>."%(n+2,lat,lon),
-						'type': "INFO",
-						'passed': False,
-						'hint':e
-					})
+					flash("Failed to convert the feature in row <code>%i</code> to a valid point. Lat was <code>%s</code> and lon <code>%s</code>. Hint: %s"%(n+2,lat,lon,e),"error")
 			conn.commit()
-	return (messages,True,[])
+			description="<code>"+"</code> <code>".join(good_headers)+"</code>"
+			cur.execute("""
+			UPDATE fwo_metadata SET features=%s,description='%s' WHERE name='%s';
+			"""%(num_points,description,tablename))
+			conn.commit()
+	return True
