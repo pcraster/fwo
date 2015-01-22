@@ -9,20 +9,12 @@ import datetime
 
 from flask import Flask, render_template, request, redirect, abort, flash, send_file, send_from_directory, url_for, make_response, Response
 
-from flask.ext.mail import Mail
-from flask.ext.sqlalchemy import SQLAlchemy
-from flask.ext.user import current_user, login_required, roles_required, UserManager, UserMixin, SQLAlchemyAdapter
+#from flask.ext.mail import Mail
+#from flask.ext.sqlalchemy import SQLAlchemy
+from flask.ext.user import current_user, login_required, roles_required, UserMixin
 from slugify import slugify
 
-
-from application import app,db
-#db = SQLAlchemy()
-
-
-
-# Initialize Flask extensions
-# db = SQLAlchemy(app)
-# mail = Mail(app)
+from application import app, db
 
 # Define User model. Make sure to add flask.ext.user UserMixin!!
 class User(db.Model, UserMixin):
