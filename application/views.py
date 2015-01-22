@@ -1,29 +1,48 @@
 from application import app
 from .models import * 
 
+
 @app.route("/")
 @login_required
 def home():
+	"""
+	The home view is not really a view but just redirects the visitor to the right place in
+	more or less the following order:
+
+	- Not logged in? Go to signup/login page. Done via @login_required decorator.
+	- If the current user is not working on a project (current_user.current_project) then
+	  redirect to settings page so he can pick a project.
+	- If you are working on a project, and you're not an admin or supervisor then go to the 
+	  project overview page (workspace) where you can select data, maps, etc.
+	- If you are working on a project, and you're an admin or supervisor then do the project
+	  page where you can see all the enrolled users, and where you can check out their 
+	  workspaces.
+
+	"""
 	if not current_user.current_project:
-		#always go to settings if user has not picked a project to work on yet.
-		return redirect(url_for('settings_page'))
+		return redirect(url_for('settings'))
 	else:
-		#user has picked a project, now redirect to the project overview if user
-		#is a supervisor or admin, and otherwise to the users workspace within
-		#that project.
 		project=Campaign.query.filter(Campaign.id==current_user.current_project).first()
 		if (project) and (not current_user.is_admin) and (not current_user.is_supervisor):
 			#user is not an admin and not a supervisor
-			return redirect(url_for('project_page',slug=project.slug,user_id=current_user.id))
+			return redirect(url_for('project_overview',slug=project.slug,user_id=current_user.id))
 		elif (project) and ((current_user.is_admin) or (current_user.is_supervisor)):
-			return redirect(url_for('project_userlist',slug=project.slug))
+			return redirect(url_for('project',slug=project.slug))
 		else:
-			return redirect(url_for('settings_page'))
+			return redirect(url_for('settings'))
 
 @app.route("/admin",methods=["GET","POST"])
 @login_required
 @roles_required("administrator")
 def admin():
+	"""
+	Admin only view for administering the Fieldwork Online site. Admins can:
+
+	- Create new projects
+	- View existing projects and invite keys
+	- View regsitered users and add/remove roles from them
+
+	"""
 	if request.method=="POST":
 		if request.form.get("action","")=="project_create":
 			try:
@@ -54,7 +73,15 @@ def admin():
 
 @app.route("/settings",methods=["GET","POST"])
 @login_required
-def settings_page():
+def settings():
+	"""
+	Settings page lets users:
+
+	- View their own settings
+	- Choose a fieldwork project (that they're enrolled in) to work on
+	- Use an invite key to enroll themselves in a project.
+
+	"""
 	if request.method=="POST":
 		if current_user.enroll_with_invite_key(request.form.get("invite_key","")):
 			flash("You have been enrolled in a new fieldwork project!","ok")
@@ -71,21 +98,19 @@ def settings_page():
 @app.route("/projects/",methods=["GET","POST"])
 @login_required
 def project_list():
-	if request.method=="POST":
-		if current_user.enroll_with_invite_key(request.form.get("invite_key","")):
-			flash("You have been enrolled in a new fieldwork project!","ok")
-		else:
-			flash("Sorry, no fieldwork project could be found with that invite key.","error")
-	current_projects=current_user.current_projects
-	num_of_projects=len(current_projects)
-	if num_of_projects==0:
-		return redirect(url_for('settings_page'))
-	else:
-		return render_template("project-list.html",project_list=current_projects)
+	flash("You can choose a project to work on from your settings page.","info")
+	return redirect(url_for('settings'))
 
+#
+#
+# View for the project page. This is an admin/supervisor only view and shows an overview
+# of the project, lettings viewers look at another users workspace, upldate the basemap,
+# or enroll other users manually.
+#
+#
 @app.route("/projects/<slug>/",methods=["GET","POST"])
 @login_required
-def project_userlist(slug=None):
+def project(slug=None):
 	"""
 	Shows the main project view for supervisors. It has a list of users and links to enroll other users which are not participating in the project yet. It is also possible to update the basemap for the project here by uploading a zip file (which will be unzipped) or individual files into the project's basemap directory.
 
@@ -131,23 +156,119 @@ def project_userlist(slug=None):
 
 		users=User.query.filter(User.campaigns.contains(project)).all()
 		enrollable_users=User.query.filter(~User.campaigns.contains(project)).all()
-		return render_template("project-userlist.html",project=project,users=users,enrollable_users=enrollable_users)
+		return render_template("project.html",project=project,users=users,enrollable_users=enrollable_users)
 	else:
 		#
 		#Else forward the user to the user's fieldwork homepage
 		#
-		return redirect(url_for('project_page',slug=project.slug,user_id=current_user.id))
+		return redirect(url_for('project_overview',slug=project.slug,user_id=current_user.id))
 
 
-
+#
+#
+# Main views for info in a user's workspace: Overview - Data - Maps - Feedback - Collaborate
+#
+#
 @app.route("/projects/<slug>/<user_id>/")
 @login_required
-def project_page(slug=None,user_id=None):
+def project_overview(slug=None,user_id=None):
 	project=Campaign.query.filter_by(slug=slug).first_or_404()
 	user=User.query.filter_by(id=user_id).first_or_404()
-	return render_template("project.html",project=project,user=user)
+	return render_template("project/overview.html",project=project,user=user)
 
-#@app.route("/projects/<slug>/<user_id>/wms")
+@app.route("/projects/<slug>/<user_id>/data",methods=["GET"])
+@login_required
+def project_data(slug,user_id):
+	project=Campaign.query.filter_by(slug=slug).first_or_404()
+	user=User.query.filter_by(id=user_id).first_or_404()
+	if (user.id != current_user.id) and (not current_user.is_supervisor) and (not current_user.is_admin):
+		abort(403)
+	attachments=project.attachments(user_id)
+	features=project.features(user_id)
+	return render_template("project/data.html",project=project,user=user,attachments=attachments,features=features)
+
+@app.route("/projects/<slug>/<user_id>/maps")
+@login_required
+def project_maps(slug,user_id):
+	project=Campaign.query.filter_by(slug=slug).first_or_404()
+	user=User.query.filter_by(id=user_id).first_or_404()
+	
+	cu=CampaignUsers.query.filter(CampaignUsers.campaign_id==project.id,CampaignUsers.user_id==user.id).first()
+	if not project.basemap:
+		flash("No basemap has been uploaded by project administrator yet.","error")
+	usermap=project.basemap_for(user_id)
+	return render_template("project/maps.html",project=project,user=user,wms_key=cu.wms_key)
+
+@app.route("/projects/<slug>/<user_id>/feedback")
+@login_required
+def project_feedback(slug,user_id):
+	project=Campaign.query.filter_by(slug=slug).first_or_404()
+	user=User.query.filter_by(id=user_id).first_or_404()
+	if (user.id != current_user.id) and (not current_user.is_supervisor) and (not current_user.is_admin):
+		return render_template("denied.html")
+
+	return render_template("project/feedback.html",project=project,user=user)
+
+@app.route("/projects/<slug>/<user_id>/collaborate")
+@login_required
+def project_collaborate(slug,user_id):
+	project=Campaign.query.filter_by(slug=slug).first_or_404()
+	user=User.query.filter_by(id=user_id).first_or_404()
+	if (user.id != current_user.id) and (not current_user.is_supervisor) and (not current_user.is_admin):
+		return render_template("denied.html")
+
+	cu=CampaignUsers.query.filter(CampaignUsers.campaign_id==project.id,CampaignUsers.user_id==user.id).first()
+	return render_template("project/collaborate.html",project=project,user=user,cu=cu)
+
+#
+#
+# Additional views for workspaces to take care of file uploads/viewing and enrollment
+#
+#
+@app.route("/projects/<slug>/<user_id>/file",methods=["GET","POST","HEAD"])
+@login_required
+def project_file(slug,user_id):
+	project=Campaign.query.filter_by(slug=slug).first_or_404()
+	user=User.query.filter_by(id=user_id).first_or_404()
+	cu=CampaignUsers.query.filter(CampaignUsers.campaign_id==project.id,CampaignUsers.user_id==user.id).first()
+	userdata=project.userdata(user.id)
+	if request.method=="HEAD" or request.method=="GET":
+		filename=request.args.get("filename","")
+		if filename != "":
+			as_attachment = True if not filename.lower().endswith((".png",".jpg",".jpeg")) else False
+			return send_from_directory(os.path.join(userdata,"attachments"), filename, as_attachment=as_attachment)
+	if request.method=="POST":
+		try:
+			from utils import excel_parser
+			f = request.files['uploadfile']
+			if f:
+				upload_file=os.path.join(userdata,"attachments",f.filename)
+				f.save(upload_file)
+				if f.filename.endswith((".xls",".xlsx")):
+					spatialite_file=project.features_database(user_id)
+					excel_parser(upload_file,spatialite_file)
+					project.basemap_update(user_id)
+					cu.update_lastactivity()
+
+				flash("Upload and processing of file <code>%s</code> completed."%(f.filename),"ok")
+		except Exception as e:
+			flash("An error occurred during the upload. Hint: %s"%(e),"error")
+	return redirect(url_for('project_data',slug=slug,user_id=user_id))
+
+@app.route("/projects/<slug>/<user_id>/enroll")
+@login_required
+@roles_required("administrator")
+def project_enroll(slug=None,user_id=None):
+	project=Campaign.query.filter_by(slug=slug).first_or_404()
+	user=User.query.filter_by(id=user_id).first_or_404()
+	project.enroll_user(user.id)
+	return redirect(url_for('project_userlist',slug=slug))
+
+#
+#
+# View for the WMS proxy
+#
+#
 @app.route("/wms/<wms_key>")
 def wmsproxy(wms_key=None):
 	"""
@@ -198,96 +319,6 @@ def wmsproxy(wms_key=None):
 		return Response("<pre>WMS server at %s returned status %i.</pre>"%(app.config["WMS_SERVER_URL"],r.status_code),mimetype="text/html")
 
 
-@app.route("/projects/<slug>/<user_id>/enroll")
-@login_required
-@roles_required("administrator")
-def project_enroll(slug=None,user_id=None):
-	project=Campaign.query.filter_by(slug=slug).first_or_404()
-	user=User.query.filter_by(id=user_id).first_or_404()
-	project.enroll_user(user.id)
-	return redirect(url_for('project_userlist',slug=slug))
-
-@app.route("/projects/<slug>/<user_id>/file",methods=["GET","POST","HEAD"])
-@login_required
-def project_file(slug,user_id):
-	project=Campaign.query.filter_by(slug=slug).first_or_404()
-	user=User.query.filter_by(id=user_id).first_or_404()
-	cu=CampaignUsers.query.filter(CampaignUsers.campaign_id==project.id,CampaignUsers.user_id==user.id).first()
-	userdata=project.userdata(user.id)
-	if request.method=="HEAD" or request.method=="GET":
-		filename=request.args.get("filename","")
-		if filename != "":
-			as_attachment = True if not filename.lower().endswith((".png",".jpg",".jpeg")) else False
-			return send_from_directory(os.path.join(userdata,"attachments"), filename, as_attachment=as_attachment)
-	if request.method=="POST":
-		try:
-			from utils import excel_parser
-			f = request.files['uploadfile']
-			if f:
-				upload_file=os.path.join(userdata,"attachments",f.filename)
-				f.save(upload_file)
-				if f.filename.endswith((".xls",".xlsx")):
-					spatialite_file=project.features_database(user_id)
-					excel_parser(upload_file,spatialite_file)
-					project.basemap_update(user_id)
-					cu.update_lastactivity()
-
-				flash("Upload and processing of file <code>%s</code> completed."%(f.filename),"ok")
-		except Exception as e:
-			flash("An error occurred during the upload. Hint: %s"%(e),"error")
-	return redirect(url_for('upload',slug=slug,user_id=user_id))
-
-@app.route("/projects/<slug>/<user_id>/data",methods=["GET"])
-@login_required
-def upload(slug,user_id):
-	project=Campaign.query.filter_by(slug=slug).first_or_404()
-	user=User.query.filter_by(id=user_id).first_or_404()
-
-	if (user.id != current_user.id) and (not current_user.is_supervisor) and (not current_user.is_admin):
-		return render_template("denied.html")
-
-	attachments=project.attachments(user_id)
-	features=project.features(user_id)
-	return render_template("upload.html",project=project,user=user,attachments=attachments,features=features)
-
-@app.route("/projects/<slug>/<user_id>/feedback")
-@login_required
-def project_feedback(slug,user_id):
-	project=Campaign.query.filter_by(slug=slug).first_or_404()
-	user=User.query.filter_by(id=user_id).first_or_404()
-	if (user.id != current_user.id) and (not current_user.is_supervisor) and (not current_user.is_admin):
-		return render_template("denied.html")
-
-	return render_template("feedback.html",project=project,user=user)
-
-@app.route("/projects/<slug>/<user_id>/collaborate")
-@login_required
-def project_collaborate(slug,user_id):
-	project=Campaign.query.filter_by(slug=slug).first_or_404()
-	user=User.query.filter_by(id=user_id).first_or_404()
-	if (user.id != current_user.id) and (not current_user.is_supervisor) and (not current_user.is_admin):
-		return render_template("denied.html")
-
-	cu=CampaignUsers.query.filter(CampaignUsers.campaign_id==project.id,CampaignUsers.user_id==user.id).first()
-	return render_template("collaborate.html",project=project,user=user,cu=cu)
-
-
-@app.route("/projects/<slug>/<user_id>/maps")
-@login_required
-def project_maps(slug,user_id):
-	project=Campaign.query.filter_by(slug=slug).first_or_404()
-	user=User.query.filter_by(id=user_id).first_or_404()
-	cu=CampaignUsers.query.filter(CampaignUsers.campaign_id==project.id,CampaignUsers.user_id==user.id).first()
-
-	if not project.basemap:
-		flash("No basemap has been uploaded by project administrator yet.","error")
-	#else:
-	#	flash("Basemap is <code>%s</code>"%(project.basemap),"info")
-	usermap=project.basemap_for(user_id)
-	#flash("User map is <code>%s</code>"%(usermap),"info")
-	#project_toc=project.table_of_contensts
-	#return render_template("maps.html",project=project,user=user,toc=project_toc)
-	return render_template("maps.html",project=project,user=user,wms_key=cu.wms_key)
 
 @app.route("/install")
 def install():
@@ -343,3 +374,20 @@ def selfcheck():
 	pass
 
 
+
+#
+#
+# Some simple views for error handling.
+#
+#
+@app.errorhandler(403)
+def permission_denied(e):
+    return render_template('errors/403_permission_denied.html'), 403
+
+@app.errorhandler(404)
+def page_not_found(e):
+    return render_template('errors/404_not_found.html'), 404
+
+@app.errorhandler(500)
+def internal_server_error(e):
+    return render_template('errors/500_internal_server_error.html'), 500
