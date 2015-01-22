@@ -29,7 +29,7 @@ $(function() {
 
 	var wmsSource=new ol.source.ImageWMS({
 		url: WMS_URL,
-		params: { 'LAYERS': getVisibleWmsLayers(), 'map': WMS_MAP }
+		params: { 'LAYERS': getVisibleWmsLayers() }
 	});
 	var wmsLayer=new ol.layer.Image({
 		//extent: [-13884991, 2870341, -7455066, 6338219],
@@ -64,6 +64,20 @@ closer.onclick = function() {
   return false;
 };
 
+
+$("a#identify-toplayer-only").click(function(){
+	$("input#checkbox-identify-toplayer-only").click()
+	return false;
+})
+$("input#checkbox-identify-toplayer-only").change(function(){
+	/* change event on the checkbox */
+	if($(this).is(":checked")) {
+		$("table#popup-attribute-table").addClass("show-toplayer-only")
+	} else {
+		$("table#popup-attribute-table").removeClass("show-toplayer-only")
+	}
+
+})
 
 /**
  * Create an overlay to anchor the popup to the map.
@@ -140,7 +154,8 @@ map.on('singleclick', function(evt) {
 
 			})*/
 			overlay.setPosition(evt.coordinate);
-			content.innerHTML = '<table class="table table-condensed table-bordered" style="margin:0;margin-top:17px;font-size:0.8em;">'+html+'</table>';
+			tableclass=$("input#checkbox-identify-toplayer-only").is(":checked")?'show-toplayer-only':''
+			content.innerHTML = '<table id="popup-attribute-table" class="table table-condensed table-bordered '+tableclass+'" style="margin:0;font-size:0.8em;">'+html+'</table>';
 			container.style.display = 'block';
 
 			/*if($('#accordion #collapseSix').hasClass("in")) {

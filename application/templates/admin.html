@@ -5,11 +5,7 @@ Administration panel
 {% endblock %}
 {% block content %}
 
-<ul>
-{% for message in messages %}
-<li>{{message}}</li>
-{% endfor %}
-</ul>
+<h2 style="text-align:center;">Fieldwork Online: Admin Interface</h2>
 <div class="panel panel-default" style="margin-top:15px;">
 	<div class="panel-heading">
 		<strong>List of fieldwork projects</strong>
@@ -48,27 +44,45 @@ Administration panel
 	</div>
 </div>
 
-
-
-
-<h3>Active Users</h3>
-<table class="table table-condensed">
-<thead>
-<tr><th>ID</th><th>Username</th><th>E-mail</th><th>Roles</th></tr>
-</thead>
-<tbody>
-{% for user in users %}
-<tr>
-	<td>{{user.id}}</td><td>{{user.username}}</td><td>{{user.email}}</td>
-	<td>
-		{% for role in user.roles %}
-		<span class="label label-primary">{{role.name}} <i class="fa fa-times"></i></span>
-		
+<div class="panel panel-default" style="margin-top:15px;">
+	<div class="panel-heading">
+		<strong>List of all registered fieldwork online users</strong>
+	</div>
+	<div class="panel-body" style="padding:0;padding-top:10px;">
+		<form role="form" action="" method="post" enctype="multipart/form-data">
+		<table class="table table-condensed">
+		<thead>
+		<tr><th>ID</th><th>Username</th><th>E-mail</th><th>Roles</th></tr>
+		</thead>
+		<tbody>
+		{% for user in users %}
+		<tr>
+			<td>{{user.id}}</td>
+			<td>
+				{{user.username}}
+				{% if user.is_supervisor or user.is_admin %}
+					<i data-original-title="This user is a supervisor or administrator" data-toggle="tooltip" title="" class="fa fa-graduation-cap"></i>
+				{% endif %}
+			</td>
+			<td>{{user.email}}</td>
+			<td>
+				{% for role in roles %}
+					{% if role.name in user.role_list %}
+						<a href="?action=rem_role&amp;user_id={{user.id}}&amp;role_name={{role.name}}" type="submit" name="" class="btn btn-primary btn-sm">{{role.name}}</a>
+					{% else %}
+						<a href="?action=add_role&amp;user_id={{user.id}}&amp;role_name={{role.name}}" type="submit" name="" class="btn btn-default btn-sm">{{role.name}}</a>
+					{% endif %}
+				{% endfor %}
+			</td>
+		</tr>
 		{% endfor %}
-	</td>
-</tr>
-{% endfor %}
-</tbody>
-</table>
+		</tbody>
+		</table>
+
+		</form>
+	</div>
+</div>
+
+
 
 {% endblock %}

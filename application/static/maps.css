@@ -118,16 +118,33 @@
         left: 48px;
         margin-left: -11px;
       }
-      .ol-popup-closer {
-        clear:left;
-        text-decoration: none;
-        position: absolute;
-        top: 2px;
-        right: 8px;
-        display:block;
+
+      div#popup-header {
+        font-size:0.8em;
+        margin-bottom:3px;
       }
-      .ol-popup-closer:after {
-        content: "✖";
+      div#popup-content {
+        clear:left;
+        max-height:200px;
+        overflow-y:scroll;
+        padding-right:6px;
+      }
+      a#popup-closer {
+        float:right;
+        padding-top:1px;
+      }
+      a#identify-toplayer-only {
+        float:left;
+        padding-top:1px;
+        padding-left:3px;
+      }
+      input#checkbox-identify-toplayer-only {
+        float:left;
+        margin:0;
+        margin-top:2px;
+      }
+      table#popup-attribute-table.show-toplayer-only tr.not-top-layer {
+        display:none;
       }
 
       a.zoom-to-extent {

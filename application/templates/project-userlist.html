@@ -14,11 +14,11 @@
 	</p>
 </div>
 	<div class="row">
-		<div class="col-md-7 col-sm-7">
+		<div class="col-md-12 col-sm-12">
 
 			<div class="panel panel-default">
 				<div class="panel-heading">
-					<strong>Users already participating in this fieldwork project</strong>
+					<strong>Participants</strong>
 				</div>
 				{% if project.enrolled_users == 0 %}
 					<div class="panel-body">
@@ -29,15 +29,27 @@
 						</p>
 					</div>
 				{% else %}
+					<div class="panel-body">
+						<p>
+						The following users are enrolled in this fieldwork project:
+						</p>
+					</div>
 					<div class="panel-body" style="padding:0;">
 						<table class="table table-condensed">
 						<thead>
-						<tr><th>Username</th><th>Full name</th><th>E-mail</th><th></th></tr>
+						<tr><th>Username</th><th>Full name</th><th>E-mail</th><th>Last data upload</th><th>Web feature services</th></tr>
 						</thead>
 						<tbody>
 						{% for user in users %}
 						<tr>
-							<td><code>{{user.username}}</code></td>
+							<td>
+								<code>
+									{% if user.id == current_user.id %}
+									<i class="fa fa-user"></i>	
+									{% endif %}
+									{{user.username}}
+								</code>
+							</td>
 							<td>
 								{{user.fullname}}
 									{% if user.is_supervisor or user.is_admin %}
@@ -47,15 +59,44 @@
 							<td>
 								{{user.email}}
 							</td>
-							<td style="text-align:right;">
-								{% for role in user.roles %}
-									{% if role.name=="student" %}
-									{% else %}
+							<td>
+							{% for membership in user.memberships %}
+								{% if membership.campaign_id == project.id %}
+								{{membership.text_lastactivity}}
+								{% endif %}
+							{% endfor %}
+							</td>
+
+							<td>
+								{% for membership in user.memberships %}
+									{% if membership.campaign_id == project.id %}
+									<code><i class="fa fa-share-alt"></i> {{membership.wms_url}}</code>
+									<!--
+								    <div class="input-group">
+								      <div class="input-group-addon"><i class="fa fa-share-alt"></i></div>
+								      <input type="text" class="form-control wfs-copy-link" id="exampleInputAmount" style="width:100px;font-family:mono;height:30px;font-size:0.7em;" value="{{membership.wms_url}}">
+								    </div>
+								    -->
 									{% endif %}
 								{% endfor %}
-								{% if user.is_student %}
-								<a class="btn btn-primary btn-xs" href="/projects/{{project.slug}}/{{user.id}}/maps">View maps <i class="fa fa-search"></i></a>
-								{% endif %}
+  							</td>
+							<td style="text-align:right;">
+
+								{% for membership in user.memberships %}
+									{% if membership.campaign_id == project.id and current_user.is_admin %}
+										{% if project.time_basemap > membership.time_basemap %}
+											<a class="btn btn-success btn-sm" href="/projects/{{project.slug}}/?action=reload&amp;user_id={{user.id}}" >
+											<i class="fa fa-refresh  fa-fw"></i> Update basemap</a> 
+										{% else %}
+											<a class="btn btn-default btn-sm" href="/projects/{{project.slug}}/?action=reload&amp;user_id={{user.id}}">
+											<i class="fa fa-check fa-fw"></i> Update basemap</a> 
+										{% endif %}
+
+									{% endif %}
+								{% endfor %}
+								
+								<a class="btn btn-primary btn-sm" href="/projects/{{project.slug}}/{{user.id}}/maps"><i class="fa fa-search"></i> View workspace</a>
+							
 							</td>
 						</tr>
 						{% endfor %}
@@ -77,73 +118,87 @@
 
 				</div>
 				<div class="panel-body" style="padding:0;">
-<table class="table table-condensed">
-			<thead>
-			<tr><th>Username</th><th>Full name</th><th>E-mail</th><th></th></tr>
-			</thead>
-			<tbody>
-			{% for user in enrollable_users %}
-			<tr>
-				<td><code>{{user.username}}</code></td>
-				<td>
-					{{user.fullname}}
-						{% if user.is_supervisor or user.is_admin %}
-							<i data-original-title="This user is a supervisor or administrator" data-toggle="tooltip" title="" class="fa fa-graduation-cap"></i>
-						{% endif %}
-				</td>
-				<td>
-					{{user.email}}
-				</td>
-				<td style="text-align:right;">
-					<a class="btn btn-primary btn-xs" href="/projects/{{project.slug}}/{{user.id}}/enroll"><i class="fa fa-plus"></i> Enroll</a>
-				</td>
-			</tr>
-			{% endfor %}
-			</tbody>
-			</table>
+					<table class="table table-condensed">
+					<thead>
+					<tr><th>Username</th><th>Full name</th><th>E-mail</th><th></th></tr>
+					</thead>
+					<tbody>
+					{% for user in enrollable_users %}
+					<tr>
+						<td>
+							
+								<code>
+									{% if user.id == current_user.id %}
+									<i class="fa fa-user"></i>	
+									{% endif %}
+									{{user.username}}
+								</code>
+						</td>
+						<td>
+							{{user.fullname}}
+								{% if user.is_supervisor or user.is_admin %}
+									<i data-original-title="This user is a supervisor or administrator" data-toggle="tooltip" title="" class="fa fa-graduation-cap"></i>
+								{% endif %}
+						</td>
+						<td>
+							{{user.email}}
+						</td>
+
+						<td style="text-align:right;">
+							<a class="btn btn-primary btn-sm" href="/projects/{{project.slug}}/?action=enroll&amp;user_id={{user.id}}"><i class="fa fa-check"></i> Enroll</a>
+						</td>
+					</tr>
+					{% endfor %}
+					</tbody>
+					</table>
 				</div>
 			
+				
 			</div>
-		</div>
-		<div class="col-md-5 col-sm-5">
+
+
 			<div class="panel panel-default">
-				<div class="panel-heading">
-					<strong>Upload new base map files</strong>
-				</div>
-				<div class="panel-body">
-					<form role="form" action="" method="post" enctype="multipart/form-data">
-					<div class="form-group">
-						<input type="file" name="uploadfile">
+					<div class="panel-heading">
+						<strong>Upload new QGIS project basemap</strong>
 					</div>
-					<button type="submit" class="btn btn-default btn-xs">Upload file <i class="fa fa-long-arrow-right"></i></button>
-					<button type="submit" class="btn btn-default btn-xs">Clear all uploads <i class="fa fa-times"></i>
-					</form>
-				</div>
-			</div>
+					{% if current_user.is_admin %}
+						<div class="panel-body">
+							{% if project.basemap_version %}
+								The current version of the basemap for this project dates from: <code>{{project.basemap_version}}</code>
+							{% else %}
+								No basemap has been uploaded yet for this project.
+							{% endif %}
+							When uploading a new base map please make sure that:
+						</div>
+						<ul>
+							<li>Your entire QGIS project is contained in a single zip file. Ensure all the files are located in the root of the zipfile, and not in separate subdirectories!</li>
+							<li>Your project uses relative paths (you can set this in <kbd>Project</kbd> <i class="fa fa-caret-right"></i> <kbd>Project Properties</kbd> in QGIS Desktop)</li>
+							<li>Your project uses only source files located in the same directory as the QGIS project file. These files (rasters, shapefiles) must be included in the zip file.</li>
+							<li>When you upload a new basemap it is automatically copied to all the user accounts in this project.</li>
+							<li>Be sure to create pyramids for heavy raster layers in your base map. This will result in much better performance of your web map.</li>
+						</ul>
 
-			{% if current_user.is_student %}
-			<div class="panel panel-default">
-				<div class="panel-heading">
-					<strong>My Fieldwork Data</strong>
-				</div>
-				<div class="panel-body">
-				<a href="/projects/{{project.slug}}/{{current_user.id}}">Your maps and data are in your project directory</a>
-				</div>
-			</div>
-			{% endif %}
+						<div class="panel-body">
+							<form role="form" action="" method="post" enctype="multipart/form-data">
+							<div class="form-group">
+								<input type="file" name="uploadfile">
+							</div>
+							<button type="submit" value="upload" name="action" class="btn btn-primary btn-sm"><i class="fa fa-upload"></i> Upload basemap</button>
 
-			{% if current_user.id %}
-			<div class="panel panel-default">
-				<div class="panel-heading">
-					<strong>Quick Upload Data</strong>
+							<!--
+							<button type="submit" value="clearall" name="action" class="btn btn-default btn-sm">Delete basemap <i class="fa fa-times"></i></button>
+							-->
+							<button type="submit" value="reload" name="action" class="btn btn-primary btn-sm"><i class="fa fa-refresh"></i> Reload basemap for all users</button>
+							</form>
+						</div>
+					{% else %}
+						<div class="panel-body">
+							Uploading a new project basemap can only be done by users with the administrator role.
+						</div>
+					{% endif %}
 				</div>
-				<div class="panel-body">
-				Drag and drop files into this box to upload them to your project data.
-				</div>
-			</div>
-			{% endif %}
-
 		</div>
+	
 	</div>
 	
 

@@ -103,6 +103,7 @@ def excel_parser(filename,spatialite_file):
 		header_vals=sheet.row_values(0)
 		lat_regex='^lat$|^lats$|^latitude|^y$|^ycoordinate$'
 		lon_regex='^lon$|^lons$|^lngs$|^lng$|^longitude|^longtitude|^x$|^xcoordinate$'
+		epsg=4326
 		col_ix_lat=col_ix_lon=None
 
 		#first sort out the headers by identifying a list of valid headers, as well as which headers and columns contain the coordinate information for the point.
@@ -119,6 +120,10 @@ def excel_parser(filename,spatialite_file):
 				additional_info=""
 			finally:
 				cleaned_header=re.sub('\((.*?)\)','',cleaned_header)
+
+			try:
+				epsg=int(re.search('^EPSG\:(\d+)',additional_info.upper()).group(1))
+			except: pass
 
 			try:
 				#Look for units in square brackets
@@ -144,6 +149,7 @@ def excel_parser(filename,spatialite_file):
 						'datatype':None,
 						'datavalues':[]
 					})
+					flash("Found header %s with info %s"%(cleaned_header,additional_info),"info")
 					#if this header matches the regexp for defining the lat and lon
 					#colums, set the col_ix_lat or col_ix_lon variable which defines
 					#which column (i.e. item in header_list) is used for trying to
@@ -195,10 +201,10 @@ def excel_parser(filename,spatialite_file):
 					fwo_id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
 					%s
 				);
-				SELECT AddGeometryColumn('%s','geom', 4326, 'POINT', 'XY');
+				SELECT AddGeometryColumn('%s','geom', %s, 'POINT', 'XY');
 				DELETE FROM fwo_metadata WHERE name='%s';
 				INSERT INTO fwo_metadata (name,title) VALUES ('%s','%s');
-			"""%(tablename,tablename,tablename,", ".join(["%s %s"%(h["header"],h["datatype"]) for h in header_list]),tablename,tablename,tablename,sheetname)
+			"""%(tablename,tablename,tablename,", ".join(["%s %s"%(h["header"],h["datatype"]) for h in header_list]),tablename,epsg,tablename,tablename,sheetname)
 			cur.executescript(create_table_sql)
 			conn.commit()
 
@@ -209,7 +215,7 @@ def excel_parser(filename,spatialite_file):
 					point=Point(lon,lat) #will raise an exception if lon,lat are None or some other incompatible value
 					attr_values=[header["attribute_values"][n] for header in header_list]
 					attr_names=",".join([header["header"] for header in header_list])
-					point_sql="INSERT INTO %s (%s,geom) VALUES (%s,GeomFromText('%s',4326))"%(tablename,attr_names,",".join("?"*len(attr_values)),point.wkt)
+					point_sql="INSERT INTO %s (%s,geom) VALUES (%s,GeomFromText('%s',%s))"%(tablename,attr_names,",".join("?"*len(attr_values)),point.wkt,epsg)
 					cur.execute(point_sql,attr_values)
 					num_points+=1
 				except Exception as e:

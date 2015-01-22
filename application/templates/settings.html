@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block content %}
+<h2 style="text-align:center;">Fieldwork Online: User Settings</h2>
+
+
+<div class="panel panel-default" style="margin-top:15px;">
+	<div class="panel-heading">
+		<h4 class="list-group-item-heading" style="margin-bottom:0px;">Account Information</h4>
+	</div>
+	
+		<table class="table">
+		<tbody>
+		<tr><td><strong>Username</strong></td><td>{{current_user.username}}</td><td><strong>Roles</strong></td><td>
+		{% for role in current_user.role_list %}
+		{{role}} 
+		{% endfor %}</td></tr>
+		<tr><td><strong>E-mail</strong></td><td>{{current_user.email}}</td><td><strong>Full name</strong></td><td>{{current_user.fullname}}</td></tr>
+		<tr><td><strong>Current project</strong></td><td>{{current_user.current_project}}</td><td></td></tr>
+		</tbody>
+		</table>
+
+	
+</div>
+
+{% if project_list|length %}
+<div class="panel panel-default" style="margin-top:15px;">
+	<div class="panel-heading">
+		<h4 class="list-group-item-heading" style="margin-bottom:0px;">Choose a different fieldwork project to work on</h4>
+	</div>
+	<div class="list-group">
+		{% for project in project_list %}
+		<a href="/projects/{{project.slug}}/" class="list-group-item "  
+{% if project.id == current_user.current_project %}style="background-color:#f5f5f5"{%endif%}
+		>
+			<h4 class="list-group-item-heading">{{project.name}}
+
+{% if project.id == current_user.current_project %}<i class="fa fa-check"></i> {%endif%}
+			</h4>
+			<p class="list-group-item-text">{{project.description}}</p>
+		</a>
+	  	{% endfor %}
+	</div>
+
+	
+</div>
+{% endif %}
+
+<div class="panel panel-default">
+	<div class="panel-heading">
+		<h4 class="list-group-item-heading" style="margin-bottom:0px;">Use an invitation key to enroll yourself in a new project</h4>
+	</div>
+	<div class="panel-body">
+		<form role="form" method="post" action="">
+			<div class="form-group">
+				<input type="text" class="form-control" name="invite_key" id="campaign-invite-key" placeholder="Enter your invitation key">
+			</div>
+			<button type="submit" class="btn btn-primary btn-sm">Enroll <i class="fa fa-check"></i>
+</button>
+		</form>
+	</div>
+</div>
+{% endblock %}

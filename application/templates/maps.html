@@ -9,8 +9,7 @@
   the HTML output.
   -->
   <script>
-    WMS_URL='wms';
-    WMS_MAP='';
+    WMS_URL='/wms/{{wms_key}}';
   </script>
   <script type="text/javascript" src="/static/js/ol.js"></script>
   <script type="text/javascript" src="/static/fieldworkonline.js"></script>
@@ -20,7 +19,8 @@
       /*
       Returns properties of an object wrapped in an array so they can 
       be iterated over. If the property does not exist an empty array is 
-      returned (so that any iteration code still works fine).
+      returned (so that any iteration code afterwards still works fine by
+      just iterating zero times).
       */
       
       if(obj.hasOwnProperty(property)) {
@@ -28,7 +28,12 @@
       } else {
         return []
       }
-      
+    }
+    function bboxToExtent(bbox) {
+      return $.merge(
+        ol.proj.transform([parseFloat(bbox.westBoundLongitude),parseFloat(bbox.southBoundLatitude)], 'EPSG:4326', 'EPSG:3857'),
+        ol.proj.transform([parseFloat(bbox.eastBoundLongitude),parseFloat(bbox.northBoundLatitude)], 'EPSG:4326', 'EPSG:3857')
+        )
     }
     function renderlayer(layer) {
       /*
@@ -36,7 +41,7 @@
       is called on each layer, then evalates if that layer has any sub layers,
       and then calls itself on all of those sub layers too. Each time it returns
       a little bit of html code which in the end make up a nicely sorted and 
-      formatted <ul>...</ul> list with the project's layers. When the page is 
+      formatted <ul>...</ul> list showing the project's layers. When the page is 
       completely loaded (all this stuff happens before the page is fully loaded)
       some events are attached to the .layer-visibility-toggle link classes which 
       toggle the visibility of that specific layer.
@@ -48,10 +53,7 @@
       var zoom_to_extent=""
       var html=''
       if(layer.hasOwnProperty("EX_GeographicBoundingBox")) {
-        layer_extent=$.merge(
-          ol.proj.transform([parseFloat(layer.EX_GeographicBoundingBox.westBoundLongitude),parseFloat(layer.EX_GeographicBoundingBox.southBoundLatitude)], 'EPSG:4326', 'EPSG:3857'),
-          ol.proj.transform([parseFloat(layer.EX_GeographicBoundingBox.eastBoundLongitude),parseFloat(layer.EX_GeographicBoundingBox.northBoundLatitude)], 'EPSG:4326', 'EPSG:3857')
-          )
+        layer_extent=bboxToExtent(layer.EX_GeographicBoundingBox)
         zoom_to_extent=' <a data-zoom-to-extent="'+layer_extent.join()+'" href="#" class="zoom-to-extent pull-right"><i class="fa fa-search" data-toggle="tooltip" data-placement="left" title="Zoom to layer"></i></a>'
       }
       if(is_folder) {
@@ -82,20 +84,34 @@
       if(data.hasOwnProperty("WMS_Capabilities")) {
         window.wmsProjectSettings=data
         window.wmsLegendGraphic=[]
-        maplayers=$("ul#map-layers")
-        maplegend=$("ul#map-legend")
+        
+        
         /*
-        The topmost layer is the project node, we don't show this one in the web
+        The geographic bounding box of the top project node is used to make an 
+        extent which is attached to the "Reset Zoom" link, which resets the zoom
+        back to the project extent which encompasses all the layers.
+        */
+        project_extent=bboxToExtent(data.WMS_Capabilities.Capability.Layer.EX_GeographicBoundingBox)
+        $("a#zoom-to-project-extent").data("zoom-to-extent",project_extent.join())
+        $(document).ready(function(){ //trigger a click event once the doc is ready
+          $("a#zoom-to-project-extent").click()
+        });
+
+        /*
+        As the topmost layer is the project node, we don't show this one in the web
         interface, only layers below that level. However, because sub_layers may
         also turn out to be a single Object (in case there is only one sub layer) 
-        rather than an array of Objects (when there are more sub layers) we force
-        it to be an Array with only one item. This makes it easier to loop over.
+        rather than an array of Objects (when there are more than one sub layers) 
+        we force it to be an Array with only one item using the arrayWrap function. 
+        This makes it easier to iterate over.
         */
-        var sub_layers=data.WMS_Capabilities.Capability.Layer.Layer;
-        sub_layers=sub_layers instanceof Array?sub_layers:[sub_layers];
+        var maplayers=$("ul#map-layers")
+        var sub_layers=arrayWrap(data.WMS_Capabilities.Capability.Layer,"Layer")
         for (var i in sub_layers) {
           maplayers.append(renderlayer(sub_layers[i]))
         }
+
+        var maplegend=$("ul#map-legend")
         for (var i in window.wmsLegendGraphic) {
           maplegend.append('<li class="list-group-item" style="padding:5px;padding-left:17px;"><strong>'+window.wmsLegendGraphic[i].title+'</strong><br /><img src="'+window.wmsLegendGraphic[i].url+'" /></li>')
         }
@@ -115,9 +131,9 @@
       (if it is visible) to make the list of wms layer names. The list is then
       reversed and joined to ensure it is layered properly.
       */
-      visible_wms_layers=[]
+      var visible_wms_layers=[]
       $(".wms-layer").each(function(){
-        layer=$(this)
+        var layer=$(this)
         if (layer.hasClass("wms-layer-visible")) {
           visible_wms_layers.push(layer.data("wms-layer"))
         }
@@ -131,12 +147,14 @@
       var html=''
       if(data.hasOwnProperty("GetFeatureInfoResponse")) {
         var layers=arrayWrap(data.GetFeatureInfoResponse,"Layer")
+        layers.reverse()
         html+=layersToRows(layers)
       }
       return html
     }
     function layersToRows(layers) {
       var html=''
+      var n=0
       $.each(layers,function(index,layer){
         var features=arrayWrap(layer,"Feature")
         var rows=''
@@ -147,7 +165,9 @@
         var attributes=arrayWrap(layer,"Attribute")
         rows+=attributesToRows(attributes)
         if(rows!='') {
-          html+="<tr style='background-color:#eee;'><td colspan='2'><strong>"+layer["@name"]+"</strong></td></tr>"+rows
+          var layer_html_rows="<tr class='__TRCLASS__' style='background-color:#eee;'><td colspan='2'><strong>"+layer["@name"]+"</strong></td></tr>"+rows
+          html+=layer_html_rows.replace(/__TRCLASS__/g,(n>0)?'not-top-layer':'')
+          n++;
         }
       })
       return html
@@ -161,14 +181,16 @@
       */
       var html=''
       $.each(attributes,function(index,attribute){
-        html+="<tr><td>"+attribute["@name"]+"</td><td>"+attributeValueParser(attribute["@value"])+"</td></tr>"
+        html+="<tr class='__TRCLASS__'><td><nobr>"+attribute["@name"]+"</nobr></td><td>"+attributeValueParser(attribute["@value"])+"</td></tr>"
       })
       return html
     }
     function attributeValueParser(value) {
       /*
-      Returns a parsed attribute value for in the popup. This checks for links
-      and big text chunks, that sort of stuff.
+      Returns a parsed attribute value for in the popup. This checks whether the
+      attribute value is a URL, a filename linking to an uploaded attachment, or
+      a paragraph of text. Depending on the type of data it will turn it into a 
+      link, paragraph, or wrap it in a <code> tag.
 
       Todo: - change look & feel of large texts. (ie. show a teaser, click to
               open a modal with the full text)
@@ -197,15 +219,18 @@
         if(filename_match) {
           var filename_extension=filename_match[1].toLowerCase()
           if($.inArray(filename_extension,filename_extensions.split(" "))!=-1) {
-            var filename_url="data?filename="+filename;
+            var filename_url="file?filename="+filename;
             /*
             To do:
 
             It looks like this may be a valid filename. Unfortunately this 
             javascript doesn't know what files have been uploaded, so in that
             case do a quick request to see if this attachment exists. If so, 
-            link it, otherwise just leave the label as is.
-
+            link it, otherwise just leave the label as is. Commented out now
+            due to sync issues. We want to print the link and then later disable
+            it, rather than wait for the request to complete and only then 
+            print either a link or just a text.
+            
             $.ajax({
               type: "HEAD",
               url: filename_url,
@@ -216,9 +241,9 @@
                 console.log("The file was not actually uploaded :?")
               }
             });
-
             */
-            filename_html+= "<i class='fa fa-paperclip'></i> <code><a href='"+filename_url+"'>"+filename+"</a></code><br/>"
+            
+            filename_html+= "<i class='fa fa-paperclip'></i> <code><a href='"+filename_url+"' class='disabled'>"+filename+"</a></code><br/>"
           }
         }
       })
@@ -242,7 +267,7 @@
     Other WMS servers obviously do not support these types of requests, but 
     for our purposes it should work just fine.
   -->
-  <script type="text/javascript" src="wms?SERVICE=WMS&amp;VERSION=1.3&amp;REQUEST=GetProjectSettings&amp;FORMAT=application/json&amp;JSONP=setprojectsettings"></script>
+  <script type="text/javascript" src="/wms/{{wms_key}}?SERVICE=WMS&amp;VERSION=1.3&amp;REQUEST=GetProjectSettings&amp;FORMAT=application/json&amp;JSONP=setprojectsettings"></script>
 {% endblock %}
 
 {% block maps %}
@@ -346,11 +371,15 @@
           </div>
           </div>
           <div class="col-md-9 col-sm-9" style="padding-right:0px;padding-left:0;">
-
             <div id="map" class="map">
-              
               <div id="popup" class="ol-popup">
-                <a href="#" id="popup-closer" class="ol-popup-closer"></a>
+                <div id="popup-header" style="height:20px;">
+                  <form>
+                    <input type="checkbox" id="checkbox-identify-toplayer-only">
+                    <a href="#" id="identify-toplayer-only">Show hits on topmost layer only</a>
+                    <a href="#" id="popup-closer" class="ol-popup-closer">Close popup</a>
+                  </form>
+                </div>
                 <div id="popup-content"></div>
               </div>
             </div>

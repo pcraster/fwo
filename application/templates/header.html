@@ -16,31 +16,57 @@
     <!-- Collect the nav links, forms, and other content for toggling -->
     <!--<div class="collapse navbar-collapse">-->
       <ul class="nav navbar-nav navbar-left">
+
+
         <!--<li class="active"><a href="/"><i class="fa fa-flag"></i> <strong>Fieldwork France 2014</strong> <i class="fa fa-angle-right"></i> Group A</a></li>-->
-        
+        <!--<li class="active"><a href="/"><i class="fa fa-home"></i> Home</a> </li>-->
+        {% if current_user and project and user %}
+          <li class="active"><a href="/projects/{{project.slug}}/"><i class="fa fa-home"></i> Home &nbsp;<i class="fa fa-angle-right"></i>&nbsp; {{project.name}} &nbsp;<i class="fa fa-angle-right"></i>&nbsp; <strong>{{user.username}}</strong></a></li>
+
+        {% elif current_user and project %}
+          <li class="active"><a href="/projects/{{project.slug}}/"><i class="fa fa-home"></i> Home &nbsp;<i class="fa fa-angle-right"></i>&nbsp; {{project.name}}</a></li>
+        {% else %}
+          <li class="active"><a href="/"><i class="fa fa-home"></i> Home</a> </li>
+        {% endif %}        
         {% if current_user.id and project and user %}
-          <li class="active"><a href="/projects/{{project.slug}}/{{user.id}}/"><i class="fa fa-flag"></i> Home</a></li>
 	        <li><a href="/projects/{{project.slug}}/{{user.id}}/data"><i class="fa fa-database"></i> Data</a></li>
 	        <li><a href="/projects/{{project.slug}}/{{user.id}}/maps"><i class="fa fa-map-marker"></i> Maps</a></li>
 	        <li><a href="/projects/{{project.slug}}/{{user.id}}/feedback"><i class="fa fa-comment"></i> Feedback</a></li>
 	        <li><a href="/projects/{{project.slug}}/{{user.id}}/collaborate"><i class="fa fa-share-alt"></i> Collaborate</a></li>
         {% endif %}
         {% if current_user.id and project and not user %}
-        	<!-- a project has been selected, but no user yet -->
           <!--
         	<li><a href="/projects/{{project.slug}}/"><i class="fa fa-file-text"></i> Project Files</a></li>
         	<li><a href="/projects/{{project.slug}}/"><i class="fa fa-user"></i> Participating Users</a></li>
           -->
         {% endif %}
       </ul>
+      <ul class="nav navbar-nav navbar-right" style="margin-right:0px;">
+        {% if current_user.is_admin %}
+        <li><a href="/admin"><i class="fa fa-wrench"></i> Administration</a></li>
+        {% endif %}
+        <li><a href="/settings"><i class="fa fa-user"></i> Settings</a></li>
+        <li><a href="/user/logout"><i class="fa fa-times"></i> Log out</a></li>
+      </ul>
       {% if current_user.id %}
-      	<p class="navbar-text pull-right" style="color:#aaa;">
-      		<i class="fa fa-user"></i> 
-      		Logged in as {{current_user.username}} ({{current_user.email}})
-      	</p> 
+      	
 	  {% endif %}
 
     <!--</div>--><!-- /.navbar-collapse -->
   </div><!-- /.container-fluid -->
 </nav>
+{% if current_user and user %}
+{% if current_user.id != user.id %}
+<div class="container-fluid" id="statusbar" style="background-color:#F5F5F5">
+  <div class="row" style="padding:10px 0px 10px 0px;">
+    <div class="col-xs-12 col-md-12">
+      <p style="color:red;text-align:center;font-weight:normal;margin:0;padding:0;">
+      <i class="fa fa-exclamation-circle"></i>
+      Be careful! You're currently viewing <strong>{{user.username}}</strong>'s workspace!
+    </p>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endif %}
 
