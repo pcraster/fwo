@@ -9,8 +9,6 @@ import datetime
 
 from flask import Flask, render_template, request, redirect, abort, flash, send_file, send_from_directory, url_for, make_response, Response, jsonify
 
-#from flask.ext.mail import Mail
-#from flask.ext.sqlalchemy import SQLAlchemy
 from flask.ext.user import UserManager, UserMixin, SQLAlchemyAdapter
 from flask.ext.user import current_user, login_required, roles_required, UserMixin
 from slugify import slugify
