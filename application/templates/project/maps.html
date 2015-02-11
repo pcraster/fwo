@@ -220,29 +220,6 @@
           var filename_extension=filename_match[1].toLowerCase()
           if($.inArray(filename_extension,filename_extensions.split(" "))!=-1) {
             var filename_url="file?filename="+filename;
-            /*
-            To do:
-
-            It looks like this may be a valid filename. Unfortunately this 
-            javascript doesn't know what files have been uploaded, so in that
-            case do a quick request to see if this attachment exists. If so, 
-            link it, otherwise just leave the label as is. Commented out now
-            due to sync issues. We want to print the link and then later disable
-            it, rather than wait for the request to complete and only then 
-            print either a link or just a text.
-            
-            $.ajax({
-              type: "HEAD",
-              url: filename_url,
-              success: function(message,text,response){
-                console.log("File actually exists and was uploaded... ")
-              },
-              error: function() {
-                console.log("The file was not actually uploaded :?")
-              }
-            });
-            */
-            
             filename_html+= "<i class='fa fa-paperclip'></i> <code><a href='"+filename_url+"' class='disabled'>"+filename+"</a></code><br/>"
           }
         }

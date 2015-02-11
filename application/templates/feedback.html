@@ -1,0 +1,117 @@
+
+<!--<button type="button" class="btn btn-primary" data-toggle="modal" data-target="#feedback-modal"><i class="fa fa-comment"></i> Feedback</button>-->
+
+
+<div class="modal" id="feedback-modal">
+  <div class="modal-dialog">
+  <form id="feedback-form" action="feedback">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+        <h4 class="modal-title">Add georeferenced comments or feedback</h4>
+      </div>
+      <div class="model-map" id="feedback-map"></div>
+      <div class="modal-body" style="padding-top:0;padding-bottom:0;">
+      	<small>The above map view will be shown alongside your comments or feedback.</small>
+		  <div class="form-group" style="margin-top:5px;">
+		    <!--<label for="exampleInputEmail1">Comments or feedback</label>-->
+		    <textarea name="comment_body" class="form-control" id="comment_body" placeholder=""></textarea>
+		  </div>
+
+
+      </div>
+      <div class="modal-footer" style="border-top:none;padding-top:0;">
+      <!--
+		  <div class="checkbox" style="float:left;margin-top:0px;margin-bottom:0px;">
+		    <label>
+		      <input type="checkbox"> <small>Do not include a map in this comment</small>
+		    </label>
+		  </div>
+		  <div class="checkbox" style="float:left;margin-top:0px;margin-bottom:0px;">
+		    <label>
+		      <input type="checkbox"> <small>Broadcast this comment to all users in this fieldwork campaign</small>
+		    </label>
+		  </div>
+		 -->
+        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+        <button type="submit" class="btn btn-primary"><i class="fa fa-comment"></i> Submit</button>
+        <input type="hidden" name="map_state" placeholder="map_state" />
+        <input type="hidden" name="map_view" placeholder="map_view" />
+        <input type="hidden" name="map_marker" placeholder="map_marker" />
+      </div>
+    </div><!-- /.modal-content -->
+
+</form>
+  </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
+
+
+<script>
+	function feedbackModal(x,y) {
+		/* 
+		Call this function to leave feedback. It will detect if there is a map on the 
+		page and set the map parameters accordingly.
+		*/
+		$('#feedback-modal').modal('show');
+		
+		$('#comment_body').val("")
+		//steal some data from the main map
+		var zoom=window.map.getView().getZoom()
+		var layers=window.map.getLayers()
+		var view=new ol.View({center: [x, y],zoom: zoom})
+
+    	var vectorSource = new ol.source.Vector({
+    		'features':[new ol.Feature({geometry:new ol.geom.Point([x,y])})]
+    	});
+
+
+	    var iconStyle = new ol.style.Style({
+	      image: new ol.style.Icon( ({
+	        anchor: [0.5, 48],
+	        anchorXUnits: 'fraction',
+	        anchorYUnits: 'pixels',
+	        opacity: 1,
+	        src: '/static/gfx/m2.png'
+	      }))
+	    });
+
+    	var vectorLayer = new ol.layer.Vector({source: vectorSource,style: iconStyle});
+
+
+		if(window['feedbackmap'] == undefined) {
+			window.feedbackmap = new ol.Map({target: 'feedback-map'});
+		}
+		window.feedbackmap.setView(view)
+		window.map.getLayers().forEach(function(lyr,ix,ar){
+			window.feedbackmap.addLayer(lyr)
+		})
+		window.feedbackmap.addLayer(vectorLayer)
+
+		console.log(window.wmsSource.getUrl())
+		console.log()
+		
+		window.feedbackmap.on('moveend',function(){
+			_mapstate=window.wmsSource.getParams()['LAYERS']
+			$('form#feedback-form input[name="map_state"]').val(_mapstate)
+			$('form#feedback-form input[name="map_center"]').val(window['feedbackmap'].getView().getCenter())
+			_view=window['feedbackmap'].getView()
+			$('form#feedback-form input[name="map_view"]').val(_view.getCenter()+","+_view.getZoom())
+			$('form#feedback-form input[name="map_marker"]').val(x+","+y)
+		})
+
+
+
+	}
+
+	$('form#feedback-form').submit(function(evt){
+		evt.preventDefault()
+		$.ajax({
+			type:"POST",
+			url: $(this).attr('action'),
+			data: $(this).serialize(),
+			success: function(data){
+				$('#feedback-modal').modal('hide');
+			}
+		})
+	})
+</script>

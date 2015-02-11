@@ -7,14 +7,16 @@ import random
 import subprocess
 import datetime
 
-from flask import Flask, render_template, request, redirect, abort, flash, send_file, send_from_directory, url_for, make_response, Response
+from flask import Flask, render_template, request, redirect, abort, flash, send_file, send_from_directory, url_for, make_response, Response, jsonify
 
 #from flask.ext.mail import Mail
 #from flask.ext.sqlalchemy import SQLAlchemy
+from flask.ext.user import UserManager, UserMixin, SQLAlchemyAdapter
 from flask.ext.user import current_user, login_required, roles_required, UserMixin
 from slugify import slugify
 
 from application import app, db
+
 
 # Define User model. Make sure to add flask.ext.user UserMixin!!
 class User(db.Model, UserMixin):
@@ -40,24 +42,35 @@ class User(db.Model, UserMixin):
 		self.add_role("student")
 	@property
 	def is_supervisor(self):
+		"""
+		Returns True is user is a supervisor, otherwise False. Used in
+		templates to allow syntax like 'if user.is_supervisor'
+		"""
 		return self.has_role("supervisor")
-
 	@property
 	def is_admin(self):
+		"""
+		Returns True is user is an admin, False otherwise.
+		"""
 		return self.has_role("administrator")
-
 	@property
 	def is_student(self):
+		"""
+		Returns True is user is a student, False otherwise.
+		"""
 		return self.has_role("student")
 	@property
 	def role_list(self):
+		"""
+		Returns a list of role names that this user has. This allows for easy 
+		looping in templates, but also to check a role using template syntax
+		like 'if "supervisor" in user.role_list'. Maybe rename to role_names?
+		"""
 		return [role.name for role in self.roles]
 
 	def has_role(self,role_name):
 		"""
-		Checks if a user is assigned a particular role or not.
-
-		Returns true if a user has the specified role, and false otherwise
+		Returns True if a user has a role with name <role_name>, False otherwise
 		"""
 		for role in self.roles:
 			if role.name==role_name:
@@ -65,8 +78,10 @@ class User(db.Model, UserMixin):
 		return False
 	def add_role(self,role_name):
 		"""
-		Adds a specific role to a user.
+		Adds the role whose matches <role_name> to the user if the user did not
+		already have this role.
 
+		Returns True if it was added, False otherwise.
 		"""
 		role=Role.query.filter(Role.name==role_name).first()
 		if role and not self.has_role(role_name):
@@ -85,6 +100,9 @@ class User(db.Model, UserMixin):
 			return False
 
 	def enroll_with_invite_key(self,invite_key):
+		"""
+		Tries to enroll a user with a given <invite_key>.
+		"""
 		campaign=Campaign.query.filter_by(invite_key=invite_key).first()
 		if campaign:
 			campaign.enroll_user(self.id)
@@ -98,19 +116,59 @@ class User(db.Model, UserMixin):
 	@property
 	def working_on(self):
 		"""
-		Return the project the user is currently working on.
+		Returns the project the user is currently working on.
 		"""
 		pass
 	@property
 	def slug(self):
+		"""
+		Returns a URL-safe slug of the user in the form <user.id>.<user.username>
+		"""
 		return slugify("%i-%s"%(self.id,self.username))
-
 	@property
 	def current_projects(self):
 		if current_user.is_admin:
 			return Campaign.query.all()
 		else:
 			return Campaign.query.filter(Campaign.users.any(id=self.id)).all()
+
+class Feedback(db.Model):
+	id = db.Column(db.Integer(), primary_key=True)
+	user_id = db.Column(db.Integer(), db.ForeignKey('user.id'))
+	campaign_id = db.Column(db.Integer(), db.ForeignKey('campaign.id'))
+	map_state = db.Column(db.Text(), nullable=True, unique=False)
+	map_view = db.Column(db.String(255), nullable=True, unique=False) #x,y,z
+	map_marker =  db.Column(db.String(255), nullable=True, unique=False) #x,y
+	comment_date = db.Column(db.DateTime(), nullable=False, default=db.func.now())
+	comment_by = db.Column(db.Integer(), db.ForeignKey('user.id'))
+	comment_by_user = db.relationship('User', lazy='joined', foreign_keys=comment_by)
+	comment_parent = db.Column(db.Integer()) #not in use. for replying to comments
+	comment_body = db.Column(db.Text(), nullable=True)
+	comment_attachment = db.Column(db.String(255), nullable=True, unique=False) #maybe change to LargeBinary later? for now store as file on filesystem.
+	include_map = db.Column(db.Boolean(), nullable=False, default=False)
+	broadcast = db.Column(db.Boolean(), nullable=False, default=False) #not in use. for broadcasting to all enrolled users
+	read_unread = db.Column(db.Boolean(), nullable=False, default=False) #not in use. for toggling a comment as read/unread
+	def __repr__(self):
+		return "Feedback!"
+	@property
+	def comment_age(self):
+		delta=datetime.datetime.utcnow()-self.comment_date
+		seconds=delta.total_seconds()
+		if seconds < 60:
+			return "Less than one minute ago"
+		if seconds < 3600:
+			return "%d minutes ago"%(seconds//60)
+		if seconds < 86400:
+			return "%d hours ago"%(seconds//(60*60))
+		else:
+			#%a %d %B at %H:%M
+			return self.comment_date.strftime("%d %B at %H:%M")
+	def attachhed_files():
+		"""
+		Return a list of files attached to this comment. Link through a feedback/file view of 
+		some sort.
+		"""
+		pass
 
 
 # Define Role model
@@ -157,6 +215,7 @@ class Campaign(db.Model):
 		if self.basemap_version:
 			return self.basemap_version
 		else:
+			#return a date well in the past so that now() is always newer
 			return datetime.datetime(2000, 8, 4, 12, 30, 45)
 	@property
 	def basedir(self):
@@ -190,7 +249,6 @@ class Campaign(db.Model):
 			os.makedirs(userdir)
 			os.makedirs(os.path.join(userdir,"map"))
 			os.makedirs(os.path.join(userdir,"attachments"))
-			#shutil.copy("template.sqlite",os.path.join(userdir,"features.sqlite"))
 		return userdir
 	def basemap_for(self,user_id=None):
 		projectfiles=sorted(glob.glob(os.path.join(self.userdata(user_id),"map")+"/*.qgs"), key=os.path.getmtime)
@@ -347,13 +405,17 @@ class CampaignUsers(db.Model):
 			return "No data uploaded yet"
 		else:
 			delta=datetime.datetime.utcnow()-self.time_lastactivity
-			if delta.seconds < 60:
+			seconds=delta.total_seconds()
+			if seconds < 60:
 				return "Less than one minute ago"
-			if delta.seconds < 3600:
-				return "%d minutes ago"%(delta.seconds//60)
-			if delta.seconds < 86400:
-				return "%d hours ago"%(delta.seconds//(60*60))
+			if seconds < 3600:
+				return "%d minutes ago"%(seconds//60)
+			if seconds < 86400:
+				return "%d hours ago"%(seconds//(60*60))
 			else:
-				return self.time_lastactivity.strftime("%a %d %B at %H:%M")
+				#%a %d %B at %H:%M
+				return self.time_lastactivity.strftime("%d %B at %H:%M")
 
 
+db_adapter = SQLAlchemyAdapter(db,  User)       # Select database adapter
+user_manager = UserManager(db_adapter, app)     # Init Flask-User and bind to app

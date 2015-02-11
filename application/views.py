@@ -199,15 +199,33 @@ def project_maps(slug,user_id):
 	usermap=project.basemap_for(user_id)
 	return render_template("project/maps.html",project=project,user=user,wms_key=cu.wms_key)
 
-@app.route("/projects/<slug>/<user_id>/feedback")
+
+@app.route("/projects/<slug>/<user_id>/feedback",methods=["GET","POST"])
 @login_required
 def project_feedback(slug,user_id):
 	project=Campaign.query.filter_by(slug=slug).first_or_404()
 	user=User.query.filter_by(id=user_id).first_or_404()
+	cu=CampaignUsers.query.filter(CampaignUsers.campaign_id==project.id,CampaignUsers.user_id==user.id).first()
 	if (user.id != current_user.id) and (not current_user.is_supervisor) and (not current_user.is_admin):
 		return render_template("denied.html")
-
-	return render_template("project/feedback.html",project=project,user=user)
+	if request.method=="POST":
+		#Lets POST some new feedback :)
+		try:
+			db.session.add(Feedback(
+				user_id=user.id,
+				campaign_id=project.id,
+				comment_by=current_user.id,
+				comment_body=request.form.get('comment_body',''),
+				map_state=request.form.get('map_state',''),
+				map_view=request.form.get('map_view',''),
+				map_marker=request.form.get('map_marker','')
+			))
+			db.session.commit()
+			return jsonify(status="OK",message="Feedback posted!"),200
+		except Exception as e:
+			return jsonify(status="FAIL",message="Something went wrong trying to add feedback. Hint: %s"%(e)),500
+	feedback=Feedback.query.filter_by(user_id=user.id).order_by("comment_date desc").all()
+	return render_template("project/feedback.html",project=project,user=user,feedback=feedback,wms_key=cu.wms_key)
 
 @app.route("/projects/<slug>/<user_id>/collaborate")
 @login_required
@@ -274,12 +292,12 @@ def wmsproxy(wms_key=None):
 	"""
 	This view acts as a HTTP proxy for the WMS server. There are a few reasons for going through the trouble of making a proxy:
 
-	- Due to same origin policy the GetFeatureInfo requests need to originate on the same host. By having having a proxy this is guaranteed and it is possible to switch WMS servers on the fly if the need arises.
+	- Due to same origin policy the GetFeatureInfo requests need to originate on the same host. By having having a proxy this is guaranteed as the WMS response will always seem to come from the same server as the website, regardless of there the wms is actually located.
 	- Sometimes QGIS server (if CRS restrictions have not been set manually in the project preferences) will return in XML a list of hundreds of allowed CRSes for each layer. This seriously bloats the GetProjectInfo request (it can become a 4MB+ file...). In this proxy we can manually limit the allowed CRSes to ensure the document does not become huge.
 	- QGIS server does not support json responses! Since we are handling a lot of these WMS requests using JavaScript (also the GetFeatureInfo requests) it would be a lot easier, faster, and result in cleaner code, if the WMS server just returned JSON documents. Using this proxy we can add json support if the request argument FORMAT is set to "application/json", and do the conversion serverside with xmltodict. A JSONP callback argument is also supported.
 	- We can camouflage the MAP parameter. This usually takes a full pathname to the map file. However, we dont want to reveal this to the world and let everybody mess about with it. Therefore we can override the MAP parameter in the proxy from the URL, that way the URL for a fieldwork WMS server will be /projects/fieldwork-demo/3/wms?<params> which is a lot neater than /cgi-bin/qgisserv.fcgi?MAP=/var/fieldwork-data/.....etc. There will be no MAP attribute visible to the outside in that case since it is added only on the proxied requests.
 	- There are some opportunities for caching/compressing WMS requests at a later time if we use this method
-	- We can limit access to the fieldwork data to only logged in users, or allow a per-project setting of who should be able to access the wms data.
+	- We can limit access to the fieldwork data to only logged in users, or allow a per-project setting of who should be able to access the wms data. Qgis wms server does not really offer very useful http authentication methods, so this should provide a solution.
 	"""
 	cu=CampaignUsers.query.filter(CampaignUsers.wms_key==wms_key).first_or_404()
 
@@ -316,7 +334,7 @@ def wmsproxy(wms_key=None):
 			#all other cases don't modify anything and just return whatever qgis server responded with
 			return Response(r.content,mimetype=r.headers['content-type'])
 	else:
-		return Response("<pre>WMS server at %s returned status %i.</pre>"%(app.config["WMS_SERVER_URL"],r.status_code),mimetype="text/html")
+		return Response("<pre>WMS server at %s returned status %i.</pre>"%(app.config["WMS_SERVER_URL"],r.status_code),mimetype="text/html"),r.status_code
 
 
 

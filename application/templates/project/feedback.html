@@ -1,7 +1,163 @@
 {% extends "base.html" %}
-{% block content %}
-<h2>Project feedback</h2>
-<p>
-	Todo.
-</p>
+{% block headcss %}
+    <link rel="stylesheet" href="/static/css/ol.css" type="text/css">
+    <link rel="stylesheet" href="/static/maps.css" type="text/css">
+    <style>
+
+    	ul#feedback-list small {
+    		color:#888;
+    	}
+    	ul#feedback-list p.comment-body {
+    		margin:0;
+    	}
+    </style>
 {% endblock %}
+{% block footjs %}
+	<script>
+		WMS_URL='/wms/{{wms_key}}';
+	</script>
+	<script type="text/javascript" src="/static/js/ol.js"></script>
+	<script type="text/javascript" src="/static/fieldworkonline.js"></script>
+	<script type="text/javascript">
+		$(function() {
+			function point_as_layer(coord) {
+				/* returns a ready made vector layer with a single point. this saves
+				   some hassle with trying to grab the point and move it. */
+				if(coord) {
+					features=[new ol.Feature({geometry:new ol.geom.Point(coord)})]
+				} else {
+					features=[]
+				}
+				var vectorSource = new ol.source.Vector({
+		    		'features':features,
+		    		'projection':'EPSG:4326'
+		    	});
+			    var iconStyle = new ol.style.Style({
+			      image: new ol.style.Icon( ({
+			        anchor: [0.5, 48],
+			        anchorXUnits: 'fraction',
+			        anchorYUnits: 'pixels',
+			        opacity: 1,
+			        src: '/static/gfx/m2.png'
+			      }))
+			    });
+			    _lyr=new ol.layer.Vector({source: vectorSource,style: iconStyle});
+			    _lyr._fwid="marker"
+			    return _lyr
+			}
+			function initialize_commentmap(wmslayers) {
+				var backgroundLayer=new ol.layer.Tile({
+					visible: true,
+					preload: Infinity,
+					source: new ol.source.BingMaps({
+						key: 'ApEqbYdQJSwOJ-KqrCQsI1AAouPQHkng2AjdJsQjLjK55P0yNQc-eEfOLUPUAAMt',
+						imagerySet: 'Aerial'
+					})
+				});
+				backgroundLayer._fwid="background"
+				var vectorLayer=point_as_layer()
+				console.log("adding wms layer. url: "+WMS_URL+" layers:"+wmslayers)
+				var wmsLayer=new ol.layer.Image({
+					source: new ol.source.ImageWMS({
+						url: WMS_URL,
+						params: { 'LAYERS': wmslayers }
+					})
+				});
+				wmsLayer._fwid="wms"
+				window.commentmap = new ol.Map({
+					target: 'commentmap',
+					layers: [backgroundLayer,vectorLayer,wmsLayer],
+					view: new ol.View({	
+						center: ol.proj.transform([5.721586,44.42], 'EPSG:4326', 'EPSG:3857'),
+						zoom: 11
+					}),
+					controls: ol.control.defaults().extend([
+						new ol.control.ScaleLine()
+					])
+				});
+			}
+
+			$('a.load-feedback-link').click(function(evt){
+				evt.preventDefault()
+				$('a.load-feedback-link').removeClass("active")
+				var _link=$(this)
+				_link.addClass("active")
+				var _wmslayers=_link.data("map-state")
+				if (!window.hasOwnProperty("commentmap")) {
+					initialize_commentmap(_wmslayers)
+				}
+				//update the wms and the marker layers to reflect the comment
+				//where submit was clicked
+				window.commentmap.getLayers().forEach(function (lyr) {
+					if(lyr.hasOwnProperty("_fwid")) {
+						if(lyr._fwid=="wms") {
+							//this is the wms layer in the map, lets update 
+							//it to show the right layers.
+							lyr.getSource().updateParams({'LAYERS':_wmslayers})
+						}
+						if(lyr._fwid=="marker") {
+							//this is the marker layer. just remove it, we'll add a new one later
+							window.commentmap.removeLayer(lyr)
+						}
+					}
+				});
+				var _xy=_link.data("map-marker").split(",")
+				var _newlyr=point_as_layer([parseFloat(_xy[0]),parseFloat(_xy[1])])
+				window.commentmap.addLayer(_newlyr)
+				//change the map view to the right center/zoom level.
+				var _xyz=_link.data("map-view").split(",")
+				window.commentmap.setView(
+					new ol.View({	
+				 		center: [parseFloat(_xyz[0]),parseFloat(_xyz[1])],
+				 		zoom: parseInt(_xyz[2])
+					})
+				);
+				var _commentbody=_link.find("p.comment-body").html()
+				$('p#comment-body').html(_commentbody)
+
+			})
+			//trigger the click event on the first link
+			$('a.load-feedback-link').first().click()
+		});
+	</script>
+{% endblock %}
+{% block content %}
+	<h2>Project feedback</h2>
+	<div class="row">
+		<div class="col-md-5 col-sm-5">
+			<div class="panel panel-default">
+				<div class="panel-heading">
+					<strong>Feedback overview</strong>
+				</div>
+				
+				<ul class="list-group" id="feedback-list" >
+					{% for comment in feedback %}
+					
+					<a href="#" class="list-group-item load-feedback-link" data-map-view="{{comment.map_view}}" data-map-marker="{{comment.map_marker}}" data-map-state="{{comment.map_state}}">
+						<span style="font-size:0.9em;">Comment by {{comment.comment_by_user.username}} posted {{comment.comment_age}}</span> 
+						<p class="comment-body">
+							{{comment.comment_body}}
+						</p>
+					</a>
+					{% endfor %}
+				</ul>
+				
+			</div>
+		</div>
+		<div class="col-md-7 col-sm-7">
+			<div class="panel panel-default">
+				<div class="panel-heading">
+					<strong>Feedback details</strong>
+				</div>
+				<div class="panel-body" id="commentmap"  style="padding:0;margin:0;height:360px;">
+
+				</div>
+				<div class="panel-body" id="feedback-detail" style="background-color:#f5f5f5">
+					<strong>Comment:</strong>
+					<p id="comment-body"></p>
+				</div>
+		</div>
+	</div>
+{% endblock %}
+
+

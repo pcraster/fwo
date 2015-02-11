@@ -133,6 +133,10 @@
         float:right;
         padding-top:1px;
       }
+      a#popup-feedback {
+        clear:left;
+        display:block;
+      }
       a#identify-toplayer-only {
         float:left;
         padding-top:1px;

@@ -9,7 +9,6 @@ from flask.ext.user import UserManager, UserMixin, SQLAlchemyAdapter
 # from slugify import slugify
 
 
-
 app = Flask(__name__)
 
 app.config.from_object("application.settings")
@@ -20,14 +19,14 @@ except: pass
 
 db=SQLAlchemy(app)
 
+
 from application import views, models
 
 
 db.create_all()
 
 # Setup Flask-User
-db_adapter = SQLAlchemyAdapter(db,  models.User)       # Select database adapter
-user_manager = UserManager(db_adapter, app)     # Init Flask-User and bind to app
+
 
 #from views import *
 
