@@ -12,6 +12,13 @@ manager = Manager(app)
 manager.add_command("runserver",Server())
 manager.add_command("shell",Shell())
 
+@manager.command:
+def test():
+	"""
+	Run tests, of which there are none at the moment...
+	"""
+	print " * Run tests here... "
+
 @manager.command
 def createdb():
 	"""
