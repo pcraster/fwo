@@ -26,3 +26,7 @@ def deploy():
         sudo("git pull",user=as_user)
         sudo("touch fieldwork_online.wsgi",user=as_user)
 
+def manage_createdb():
+	with cd(code_dir):
+		sudo("python manage.py createdb",user=as_user)
+

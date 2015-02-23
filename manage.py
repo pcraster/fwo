@@ -25,6 +25,7 @@ def createdb():
 	Create the database.
 	"""
 	db.create_all()
+	initdb()
 
 @manager.command
 def clearuserdata():
@@ -63,7 +64,6 @@ def initdb():
 	* Create an admin, supervisor, and student user
 	* The random passwords are stored in install.txt in the data directory
 	"""
-
 	db.session.add_all([
 		Role(name="administrator"),
 		Role(name="supervisor"),
