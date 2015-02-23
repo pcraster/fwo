@@ -23,8 +23,7 @@ db=SQLAlchemy(app)
 from application import views, models
 
 
-db.create_all()
-
+#db.create_all()
 # Setup Flask-User
 
 

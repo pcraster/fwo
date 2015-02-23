@@ -1,5 +1,6 @@
 *.pyc
 *.sqlite
+*~
 test/*
 virtualenv/*
 local_settings.py

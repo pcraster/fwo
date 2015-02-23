@@ -298,6 +298,8 @@ def wmsproxy(wms_key=None):
 	- We can camouflage the MAP parameter. This usually takes a full pathname to the map file. However, we dont want to reveal this to the world and let everybody mess about with it. Therefore we can override the MAP parameter in the proxy from the URL, that way the URL for a fieldwork WMS server will be /projects/fieldwork-demo/3/wms?<params> which is a lot neater than /cgi-bin/qgisserv.fcgi?MAP=/var/fieldwork-data/.....etc. There will be no MAP attribute visible to the outside in that case since it is added only on the proxied requests.
 	- There are some opportunities for caching/compressing WMS requests at a later time if we use this method
 	- We can limit access to the fieldwork data to only logged in users, or allow a per-project setting of who should be able to access the wms data. Qgis wms server does not really offer very useful http authentication methods, so this should provide a solution.
+
+	Todo: return data in chunks rather than all in one go.
 	"""
 	cu=CampaignUsers.query.filter(CampaignUsers.wms_key==wms_key).first_or_404()
 
@@ -341,56 +343,13 @@ def wmsproxy(wms_key=None):
 @app.route("/install")
 def install():
 	"""
-		Installs the fieldwork online app.
+	The install view is no longer used. After creating the database, the initial
+	admin, supervisor, and student user, as well as the default dummy project, 
+	are added by the "initdb" management command in ./manage.py. The users are 
+	given random passwords which are saved in "install.txt" in the data directory
+	for later reference.
 	"""
-	if os.path.isfile(os.path.join(app.config["DATADIR"],"install.txt")):
-		flash("The application is already installed! Remove the <code>install.txt</code> file before re-installing the application.","error")
-	else:
-		try:
-			messages=[]
-			if User.query.count()==0:
-				db.session.add_all([
-					Role(name="administrator"),
-					Role(name="supervisor"),
-					Role(name="student")
-				])
-				db.session.commit()
-				flash("Created <code>administrator</code>, <code>supervisor</code> and <code>student</code> roles.","ok")
-
-				admin = User(username='admin', fullname='Site Admin', email='kokoalberti@yahoo.com', active=True, password='admin')
-				admin.roles.append(Role.query.filter(Role.name=='administrator').first())
-				admin.roles.append(Role.query.filter(Role.name=='supervisor').first())
-
-				supervisor = User(username='supervisor', fullname='Site Supervisor', email='k.alberti@uu.nl', active=True, password='supervisor')
-				supervisor.roles.append(Role.query.filter(Role.name=='supervisor').first())
-
-				student = User(username='student', fullname='Sam Student', email='k.alberti@students.uu.nl', active=True, password='student')
-				student.roles.append(Role.query.filter(Role.name=='student').first())
-
-				db.session.add_all([admin,supervisor,student])
-				db.session.commit()
-				flash("Created a user <code>admin</code> with password <code>admin</code>","ok")
-				flash("Created a user <code>supervisor</code> with password <code>supervisor</code>","ok")
-				flash("Created a user <code>student</code> with password <code>student</code>","ok")
-
-				campaign = Campaign(name="Demo Project",description="A fieldwork campaign for demonstration purposes. This project showcases basic functionality and lets you try out the interface.")
-				campaign.users.append(admin)
-				db.session.add(campaign)
-				db.session.commit()
-				flash("Created a fieldwork project for demo purposes. It is called <code>Fieldwork Online Demo Project</code>. Users can enroll themselves with the invite key <code>%s</code>"%(campaign.invite_key),"ok")
-				flash("You can now log in via the <a href='/'>Fieldwork Online Homepage</a>.","info")
-			else:
-				flash("There are already users defined in the database. Please delete the database file <code>fieldwork.sqlite</code>, restart the application, and reload this page.","error")
-		except Exception as e:
-			flash("An error occurred while trying to install the base application. Hint:%s"%(e),"error")
 	return render_template("install.html")
-
-def selfcheck():
-	"""
-	Checks environment settings and read/writability of folders and programs to make sure everything is in working order. Returns True if all is well and False otherwise.
-	"""
-	pass
-
 
 
 #

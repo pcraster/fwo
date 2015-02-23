@@ -4,15 +4,15 @@ import datetime
 import subprocess
 
 from flask.ext.script import Manager, Shell, Server
-from application import app
-from application.models import db
+#from application import app
+from application.models import *
 
 manager = Manager(app)
 
 manager.add_command("runserver",Server())
 manager.add_command("shell",Shell())
 
-@manager.command:
+@manager.command
 def test():
 	"""
 	Run tests, of which there are none at the moment...
@@ -57,12 +57,39 @@ def backup():
 @manager.command
 def initdb():
 	"""
-	Initialize the database with some default data such as an admin
-	user and a demo fieldwork campaign.
+	Initialize the database with default data.
 
-	For now use a web view to do this at <host>/install
+	* Add the administrator, supervisor, and student roles
+	* Create an admin, supervisor, and student user
+	* The random passwords are stored in install.txt in the data directory
 	"""
-	pass
+
+	db.session.add_all([
+		Role(name="administrator"),
+		Role(name="supervisor"),
+		Role(name="student")
+	])
+	db.session.commit()
+	flash("Created <code>administrator</code>, <code>supervisor</code> and <code>student</code> roles.","ok")
+
+	admin = User(username='admin', fullname='Site Admin', email='kokoalberti@yahoo.com', active=True, password='admin')
+	admin.roles.append(Role.query.filter(Role.name=='administrator').first())
+	admin.roles.append(Role.query.filter(Role.name=='supervisor').first())
+
+	supervisor = User(username='supervisor', fullname='Site Supervisor', email='k.alberti@uu.nl', active=True, password='supervisor')
+	supervisor.roles.append(Role.query.filter(Role.name=='supervisor').first())
+
+	student = User(username='student', fullname='Sam Student', email='k.alberti@students.uu.nl', active=True, password='student')
+	student.roles.append(Role.query.filter(Role.name=='student').first())
+
+	db.session.add_all([admin,supervisor,student])
+	db.session.commit()
+
+	campaign = Campaign(name="Demo Project",description="A fieldwork campaign for demonstration purposes. This project showcases basic functionality and lets you try out the interface.")
+	campaign.users.append(admin)
+	db.session.add(campaign)
+	db.session.commit()
+	print " * Created default users, roles, and demo project."
 
 @manager.command
 def dropdb():
