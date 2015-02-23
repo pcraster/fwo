@@ -9,7 +9,8 @@
 # out the "from application import app as application" line and
 # define your own application below that.
 #
-
+import sys
+sys.path.insert(0, '/var/www/fieldwork_online')
 from application import app as application
 
 #

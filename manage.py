@@ -18,6 +18,7 @@ def test():
 	Run tests, of which there are none at the moment...
 	"""
 	print " * Run tests here... "
+	print app.config
 
 @manager.command
 def createdb():
