@@ -133,17 +133,18 @@ def project(slug=None):
 				f.save(upload_file)
 				if f.filename.endswith(".zip"):
 					try:
-						import zipfile
-						with zipfile.ZipFile(upload_file) as zf:
-							zip_filelist=zf.namelist()
-							zip_details="Extracted %s files: <code>"%(len(zip_filelist))+"</code> <code>".join(zip_filelist)+"</code>"
-							zf.extractall(os.path.join(project.projectdata,"map"))
-							flash("Zip file detected! %s"%zip_details,"ok")
-							project.basemap_version=db.func.now()
-							db.session.commit()
+						#Don't use zipfile with context manager on py 2.6
+						#https://bugs.launchpad.net/horizon/+bug/955994
+						zf=zipfile.ZipFile(upload_file)
+						zip_filelist=zf.namelist()
+						zip_details="Extracted %s files: <code>"%(len(zip_filelist))+"</code> <code>".join(zip_filelist)+"</code>"
+						zf.extractall(os.path.join(project.projectdata,"map"))
+						flash("Zip file detected! %s"%zip_details,"ok")
+						project.basemap_version=db.func.now()
+						db.session.commit()
+						flash("File <code>%s</code> was uploaded to the project basemap. Timestamp: <code>%s</code>"%(f.filename,project.basemap_version),"ok")
 					except Exception as e:
 						flash("Zip file could not be extracted! Hint: %s"%(e),"error")
-				flash("File <code>%s</code> was uploaded to the project basemap. Timestamp: <code>%s</code>"%(f.filename,project.basemap_version),"ok")
 			elif request.form.get("action","")=="clearall":
 				flash("Clearing all basemap data!","ok")
 			elif request.form.get("action","")=="reload":
