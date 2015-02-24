@@ -13,3 +13,4 @@ Fabric==1.10.0
 python-slugify
 xlrd
 argparse
+requests

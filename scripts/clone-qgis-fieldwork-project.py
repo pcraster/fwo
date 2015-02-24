@@ -21,7 +21,6 @@ try:
 	import re
 	import hashlib
 	import argparse
-	import yaml
 	import subprocess
 	import random
 	import lxml.etree as et
