@@ -8,7 +8,7 @@ CSRF_ENABLED = True
 SQLALCHEMY_DATABASE_URI = '' 
 
 # Development paths...
-APPDIR="/home/code/koko/fieldwork_online/"
+APPDIR="/home/koko/code/fieldwork_online/"
 DATADIR="/var/fieldwork-data/"
 
 

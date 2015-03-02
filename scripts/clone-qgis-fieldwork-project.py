@@ -24,7 +24,7 @@ try:
 	import subprocess
 	import random
 	import lxml.etree as et
-
+	sys.path.append('/usr/local/share/qgis/python')
 	from PyQt4.QtCore import QFileInfo,QString,QStringList
 	from qgis.core import *
 	from pyspatialite import dbapi2 as db
@@ -144,7 +144,7 @@ def main():
 		try:
 			open(lockfile,'a').close() #create a lockfile
 
-			QgsApplication([], True) #initialize the qgis application
+			QgsApplication([], False) #initialize the qgis application
 			QgsApplication.initQgis()
 
 			proj=QgsProject.instance()
@@ -169,7 +169,7 @@ def main():
 			#Set the project to use absolute paths
 			proj.writeEntry("Paths","Absolute",QString("true"))
 
-			tree=proj.layerTreeRegistryBridge()
+			#tree=proj.layerTreeRegistryBridge()
 			root=proj.layerTreeRoot()
 
 
@@ -204,9 +204,11 @@ def main():
 					print table_list
 
 					#Find the "Spreadsheets" group, or create it if we couldn't find it.
-					spreadsheets=root.findGroup("Spreadsheets")
-					if not spreadsheets:
-						spreadsheets=root.insertGroup(0,QString("Spreadsheets"))
+					#QGIS 2.4+
+					#spreadsheets=root.findGroup("Spreadsheets")
+					#if not spreadsheets:
+					#	#QGIS 2.4+
+					#	spreadsheets=root.insertGroup(0,QString("Spreadsheets"))
 
 					
 					new_layers=[]
@@ -259,9 +261,10 @@ def main():
 								print " * Failed to create layer!"
 							
 							print " * Creating the layer went ok!"
-							mapreg.addMapLayer(vectorlayer,False)
-							print " * Try to add it to the group!"
-							spreadsheets.addLayer(vectorlayer)
+							mapreg.addMapLayer(vectorlayer,True)
+							print " * Dont try to add it to the group cause qgis 2.4!"
+							#QGIS 2.4+
+							#spreadsheets.addLayer(vectorlayer)
 							print " * Success! Layer is called: %s\n\n"%(title)
 						#end adding user defined features
 				except Exception as e:
