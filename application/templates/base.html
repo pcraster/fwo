@@ -42,10 +42,11 @@
 	</head>
 	<body>
 
-
+{% if current_user.id %}
 		{% block header %}
 			{% include "header.html" %}
 		{% endblock %}
+{% endif %}
 
 		{% include "messages.html" %}
 

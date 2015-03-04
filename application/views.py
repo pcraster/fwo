@@ -309,7 +309,7 @@ def wmsproxy(wms_key=None):
 	user=User.query.get(cu.user_id)
 	#user=User.query.filter_by(id=user_id).first_or_404()
 
-	import xmltodict
+
 	requestparams=dict(request.args) #we need something which is mutable...
 	#requestparams.pop("MAP") #don't send the map param
 	mapfile=project.basemap_for(user.id)
