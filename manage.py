@@ -12,7 +12,7 @@ manager.add_command("runserver",Server())
 manager.add_command("shell",Shell())
 
 def random_password():
-	return ''.join(random.choice("ABCDEFGHJKLMNPQRSTUVWXYZ23456789") for _ in range(8))
+	return ''.join(random.choice("abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789") for _ in range(8))
 
 @manager.command
 def test():
@@ -97,16 +97,11 @@ def initdb():
 	db.session.add(campaign)
 	db.session.commit()
 
-	with open(os.path.join(app.config["DATADIR"],"install.txt"),'w') as f:
-		f.write("""
-			Application initialized!
-
-			Users credentials:
-				admin/%s
-				supervisor/%s
-				student/%s
-		"""%(pw_admin,pw_supervisor,pw_student))
-	print " * Created default users, roles, and demo project. See install.txt for user credentials."
+	print " * Created default users, roles, and demo project."
+	print " * User credentials (you way want to write these down, it is the only time they're visible):"
+	print "    - Administrator: admin/%s"%(pw_admin)
+	print "    - Supervisor: supervisor/%s"%(pw_student)
+	print "    - Student: student/%s"%(pw_student)
 
 @manager.command
 def dropdb():
