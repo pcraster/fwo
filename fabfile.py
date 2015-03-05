@@ -39,6 +39,11 @@ def manage_dropdb():
     with cd(env.code_dir):
         sudo("python manage.py dropdb",user=env.as_user)
 
+def manage_reset_password():
+    username=prompt('Please enter a username to reset:')
+    with cd(env.code_dir):
+        sudo("python manage.py reset_password %s"%(username),user=env.as_user)
+
 def install_requirements():
 	with cd(env.code_dir):
 		sudo("pip install -r ./application/requirements.txt")

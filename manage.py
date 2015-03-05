@@ -126,6 +126,17 @@ def createblueprint():
 	"""
 	pass
 
+@manager.command
+@manager.option('-u', '--username', help='Username')
+def reset_password(username):
+	"""
+	Hard reset of user password
+	"""
+	user=User.query.filter(User.username==username).one()
+	pw_user=random_password()
+	user.password=user_manager.hash_password(pw_user)
+	db.session.commit()
+	print "New password for %s: %s"%(username,pw_user)
 
 if __name__=="__main__":
 	manager.run()
