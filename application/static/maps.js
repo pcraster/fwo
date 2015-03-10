@@ -22,7 +22,11 @@ $(function() {
 
 	window.wmsSource=new ol.source.ImageWMS({
 		url: WMS_URL,
-		params: { 'LAYERS': getVisibleWmsLayers() }
+		params: { 
+			'LAYERS': getVisibleWmsLayers(),
+			'FORMAT': "image/jpeg",
+			'IMAGE_QUALITY': '20'
+		}
 	});
 	var wmsLayer=new ol.layer.Image({
 		source: window.wmsSource
@@ -84,7 +88,7 @@ $(function() {
 	 */
 	window.map = new ol.Map({
 		target: 'map',
-		layers: [backgroundLayer,wmsLayer],
+		layers: [wmsLayer],
 		overlays: [overlay],
 		view: wmsView,
 		controls: ol.control.defaults().extend([

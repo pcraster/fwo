@@ -17,7 +17,7 @@ app.config.from_object("application.settings")
 try: app.config.from_object('application.local_settings')
 except: pass
 
-app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
+#app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 
 db=SQLAlchemy(app)
 
