@@ -41,12 +41,13 @@
 		</style>
 	</head>
 	<body>
-
-{% if current_user.id %}
-		{% block header %}
-			{% include "header.html" %}
-		{% endblock %}
-{% endif %}
+		{% if current_user.id %}
+			{% block header %}
+				{% include "header.html" %}
+			{% endblock %}
+		{% else %}
+			{% include "header-logged-out.html" %}
+		{% endif %}
 
 		{% include "messages.html" %}
 

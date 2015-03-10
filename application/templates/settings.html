@@ -7,7 +7,10 @@
 	<div class="panel-heading">
 		<h4 class="list-group-item-heading" style="margin-bottom:0px;">Account Information</h4>
 	</div>
-	
+	<div class="panel-body">
+	<a class="btn btn-primary btn-sm" href="/user/change-password">Change password</a>
+	</div>
+	<div class="panel-body" style="margin:0px;padding:0px">
 		<table class="table">
 		<tbody>
 		<tr><td><strong>Username</strong></td><td>{{current_user.username}}</td><td><strong>Roles</strong></td><td>
@@ -18,8 +21,8 @@
 		<tr><td><strong>Current project</strong></td><td>{{current_user.current_project}}</td><td></td></tr>
 		</tbody>
 		</table>
+	</div>
 
-	
 </div>
 
 {% if project_list|length %}

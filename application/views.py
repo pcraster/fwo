@@ -362,10 +362,14 @@ def install():
 def permission_denied(e):
     return render_template('errors/403_permission_denied.html'), 403
 
+@app.errorhandler(413)
+def request_too_large(e):
+    return render_template('errors/413_request_entity_too_large.html'), 413
+
 @app.errorhandler(404)
 def page_not_found(e):
     return render_template('errors/404_not_found.html'), 404
 
-@app.errorhandler(500)
-def internal_server_error(e):
-    return render_template('errors/500_internal_server_error.html'), 500
+# @app.errorhandler(500)
+# def internal_server_error(e):
+#     return render_template('errors/500_internal_server_error.html'), 500

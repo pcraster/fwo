@@ -11,7 +11,6 @@ SQLALCHEMY_DATABASE_URI = ''
 APPDIR="/home/koko/code/fieldwork_online/"
 DATADIR="/var/fieldwork-data/"
 
-
 # Configure Flask-Mail -- Required for Confirm email and Forgot password features
 MAIL_SERVER   = 'smtp.gmail.com'
 MAIL_PORT     = 465
@@ -22,7 +21,7 @@ MAIL_DEFAULT_SENDER = '"Sender" <noreply@example.com>'
 
 
 # Configure Flask-User
-USER_PRODUCT_NAME           = "ProductName"     # Used by email templates
+USER_PRODUCT_NAME           = "Fieldwork Online"     # Used by email templates
 USER_ENABLE_USERNAME        = True              # Register and Login with username
 USER_ENABLE_EMAIL           = True              # Register and Login with email
 USER_LOGIN_TEMPLATE         = 'flask_user/login_or_register.html'
@@ -31,6 +30,11 @@ USER_AFTER_LOGIN_ENDPOINT   = 'home'
 USER_AFTER_CONFIRM_ENDPOINT = 'home'
 
 USER_ENABLE_CONFIRM_EMAIL   = False 
+USER_ENABLE_CHANGE_USERNAME = False
+USER_SEND_PASSWORD_CHANGED_EMAIL = False
+USER_SEND_REGISTERED_EMAIL = False
+USER_SEND_USERNAME_CHANGED_EMAIL = False
+
 
 # URLs                        # Default
 USER_CHANGE_PASSWORD_URL      = '/user/change-password'
@@ -44,3 +48,4 @@ USER_MANAGE_EMAILS_URL        = '/user/manage-emails'
 USER_REGISTER_URL             = '/user/register'
 USER_RESEND_CONFIRM_EMAIL_URL = '/user/resend-confirm-email'    # v0.5.0 and up
 USER_RESET_PASSWORD_URL       = '/user/reset-password/<token>'
+

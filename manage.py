@@ -77,16 +77,17 @@ def initdb():
 		Role(name="student")
 	])
 	db.session.commit()
+
 	flash("Created <code>administrator</code>, <code>supervisor</code> and <code>student</code> roles.","ok")
 
-	admin = User(username='admin', fullname='Site Admin', email='kokoalberti@yahoo.com', active=True, password=pw_admin)
+	admin = User(username='admin', fullname='Site Admin', email='kokoalberti@yahoo.com', active=True, password=user_manager.hash_password(pw_admin))
 	admin.roles.append(Role.query.filter(Role.name=='administrator').first())
 	admin.roles.append(Role.query.filter(Role.name=='supervisor').first())
 
-	supervisor = User(username='supervisor', fullname='Site Supervisor', email='k.alberti@uu.nl', active=True, password=pw_supervisor)
+	supervisor = User(username='supervisor', fullname='Site Supervisor', email='k.alberti@uu.nl', active=True, password=user_manager.hash_password(pw_supervisor))
 	supervisor.roles.append(Role.query.filter(Role.name=='supervisor').first())
 
-	student = User(username='student', fullname='Sam Student', email='k.alberti@students.uu.nl', active=True, password=pw_student)
+	student = User(username='student', fullname='Sam Student', email='k.alberti@students.uu.nl', active=True, password=user_manager.hash_password(pw_student))
 	student.roles.append(Role.query.filter(Role.name=='student').first())
 
 	db.session.add_all([admin,supervisor,student])

@@ -38,7 +38,7 @@ class User(db.Model, UserMixin):
 		self.fullname=kwargs["fullname"] if "fullname" in kwargs else ''
 		self.email=kwargs["email"]
 		self.active=True
-		self.password=user_manager.hash_password(kwargs["password"])
+		self.password=kwargs["password"]
 		self.add_role("student")
 	@property
 	def is_supervisor(self):
