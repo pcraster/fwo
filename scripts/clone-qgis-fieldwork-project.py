@@ -73,16 +73,18 @@ def sanitize_layer_names(layernames):
 		yield (old_layer_id,layer_id)
 
 def safe_layer_names():
+	replacements={}
 	layers=QgsMapLayerRegistry.instance().mapLayers()
 	for name,layer in layers.iteritems():
 		prettyname=layer.name()
 		newname=re.sub(r'\W+',' ',str(layer.name())).lower()
 		newname="_".join(map(str,newname.split()))
-		layer.setLayerName(QString(newname))
-		layer.setTitle(QString(prettyname))
-		layer.reload()
-		print "%s->%s"%(name,newname)
-	return False
+		#layer.setLayerName(QString(newname))
+		#layer.setTitle(QString(prettyname))
+		#layer.reload()
+		#print "%s->%s"%(name,newname)
+		replacements.update({str(name):str(newname)})
+	return replacements
 
 def get_layer_by_name(layer_name):
 	"""
@@ -145,6 +147,9 @@ def main():
 			open(lockfile,'a').close() #create a lockfile
 
 			QgsApplication([], False) #initialize the qgis application
+
+			QgsApplication.setPrefixPath("/usr/local", True)
+
 			QgsApplication.initQgis()
 
 			proj=QgsProject.instance()
@@ -180,7 +185,7 @@ def main():
 
 			#Update all the layer names so they are 'safe' with no spaces, weird 
 			#characters, or timestamps in their ID's (qgis does this by itself..)
-			#safe_layer_names()
+			#replacements=safe_layer_names()
 
 
 			mapreg=QgsMapLayerRegistry.instance()
@@ -205,10 +210,10 @@ def main():
 
 					#Find the "Spreadsheets" group, or create it if we couldn't find it.
 					#QGIS 2.4+
-					#spreadsheets=root.findGroup("Spreadsheets")
-					#if not spreadsheets:
-					#	#QGIS 2.4+
-					#	spreadsheets=root.insertGroup(0,QString("Spreadsheets"))
+					spreadsheets=root.findGroup("Spreadsheets")
+					if not spreadsheets:
+						#QGIS 2.4+
+						spreadsheets=root.insertGroup(0,QString("Spreadsheets"))
 
 					
 					new_layers=[]
@@ -261,30 +266,44 @@ def main():
 								print " * Failed to create layer!"
 							
 							print " * Creating the layer went ok!"
-							mapreg.addMapLayer(vectorlayer,True)
+							
+							mapreg.addMapLayer(vectorlayer,False)
 							print " * Dont try to add it to the group cause qgis 2.4!"
 							#QGIS 2.4+
-							#spreadsheets.addLayer(vectorlayer)
+							spreadsheets.addLayer(vectorlayer)
 							print " * Success! Layer is called: %s\n\n"%(title)
 						#end adding user defined features
 				except Exception as e:
-					print " * No userdata found!"
+					print " * No userdata found! Hint:%s"%(e)
+
+			replacements=safe_layer_names()
+			print "replacements:"
+			print replacements
 
 			id_replacements=[]
 			wfs_layers=[] #used to store a list of layer names for which to enable WFS
 			layers=mapreg.mapLayers()
 			for name,layer in layers.iteritems():
-				prettyname=layer.name()
-				newname=re.sub(r'\W+',' ',str(layer.name())).lower()
-				newname="_".join(map(str,newname.split()))
-				layer.setLayerName(QString(newname))
-				layer.setTitle(QString(prettyname))
-				layer.reload()
-				layer_id=str(layer.id())
-				id_replacements.append((layer_id,newname))
-				print "%s->%s (id=%s; type=%s)"%(name,newname,layer_id,layer.type())
-				if layer.type()==0:
-					wfs_layers.append(layer_id)
+
+				_name=unicode(name,"utf-8")
+				_layer_id=unicode(layer.id(),"utf-8")
+				#print "name,id=%s,%s"%(_name,_layer_id)
+				#prettyname=_name
+				#newname=re.sub(r'\W+',' ',str(_name)).lower()
+				#newname="_".join(map(str,newname.split()))
+				#layer.setLayerName(QString(newname))
+				#if name in list(replacements):
+				#	print "Swapping %s for %s"%(name,replacements[name])
+				#if True:
+				if name in list(replacements):
+					print "Looks like %s is a replaceable with %s"%(name,replacements[str(name)]) 
+					layer.setTitle(QString(replacements[str(name)]))
+					layer.reload()
+				#laayer_id=str(layer.id())
+				#id_replacements.append((_layer_id,newname))
+				#print "%s->%s (id=%s; type=%s)"%(_name,newname,_layer_id,layer.type())
+				#if layer.type()==0:
+				#	wfs_layers.append(_layer_id)
 
 
 			#print "Vector layers:"
@@ -335,6 +354,7 @@ def main():
 			rt=target.find(".").append(legend)
 			#Write the target file agaiin.
 			target.write(targfile)
+			print " Wrote to %s"%(targfile)
 
 			#Update all the layer names that have a timestamp attached to it.
 			#
