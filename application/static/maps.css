@@ -164,3 +164,10 @@
       a#zoom-to-project-extent:hover {
         color:#666;
       }
+
+      ul#background-layers li.active a {
+        color:#fff;
+      }
+      ul#background-layers li i {
+        color:#fff;
+      }

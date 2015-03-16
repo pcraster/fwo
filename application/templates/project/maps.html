@@ -7,9 +7,21 @@
   <!--
   The footjs template block is inserted just before the </body> tag in 
   the HTML output.
+
+  Using mapfile: {{mapfile}}
   -->
   <script>
     WMS_URL='/wms/{{wms_key}}';
+    BACKGROUND_LAYERS={
+        url: '{{mapserver_url}}',
+        params: {
+          'LAYERS':'{{project.background_layer_default}}',
+          'TILED': true,
+          'MAP':'{{project.background_layers_mapfile}}',
+          'FORMAT':'image/png; mode=8bit' //image/png; mode=8bit
+        },
+        serverType: 'mapserver'
+      };
   </script>
   <script type="text/javascript" src="/static/js/ol.js"></script>
   <script type="text/javascript" src="/static/fieldworkonline.js"></script>
@@ -234,6 +246,19 @@
         return filename_html
       }
     }
+    function setBackgroundLayer(name) {
+      $('ul#background-layers li').each(function(){
+        li=$(this)
+        li.removeClass('active')
+        if (li.attr("id")=="background-layer-"+name) {
+          li.addClass('active')
+        }
+      })
+      window.tileSource.updateParams({
+        'LAYERS':name
+      })
+      return false;
+    }
   </script>
   <!--
     Load the GetProjectSettings request from our custom WMS proxy. The proxy
@@ -256,7 +281,7 @@
               <div class="panel-heading">
                 <h4 class="panel-title">
                   <i class="fa fa-fw fa-bars"></i> 
-                  <a data-toggle="collapse" data-parent="#accordion" href="#collapseOne"><strong>Layers</strong></a>
+                  <a data-toggle="collapse" data-parent="#accordion" href="#collapseOne"><strong>Data</strong></a>
                   <a data-zoom-to-extent="" href="#" id="zoom-to-project-extent" class="zoom-to-extent pull-right">Reset zoom <i class="fa fa-arrows"></i></a>
                 </h4>
 
@@ -274,6 +299,21 @@
               <div class="panel-heading">
                 <h4 class="panel-title">
                   <i class="fa fa-fw fa-bars"></i> 
+                  <a data-toggle="collapse" data-parent="#accordion" href="#collapseFour"><strong>Background Layers</strong></a>
+                </h4>
+              </div>
+              <div id="collapseFour" class="panel-collapse collapse">
+                <ul class="list-group" id="background-layers">
+                  {% for layer in project.background_layers %}
+                    <li class="list-group-item" id="background-layer-{{layer.name}}"><i class="fa fa-check fa-fw"></i> <a href="#" onclick="setBackgroundLayer('{{layer.name}}');">{{layer.name}}</a></li>
+                  {% endfor %}
+                </ul>
+              </div>
+            </div>
+            <div class="panel panel-default">
+              <div class="panel-heading">
+                <h4 class="panel-title">
+                  <i class="fa fa-fw fa-bars"></i> 
                   <a data-toggle="collapse" data-parent="#accordion" href="#collapseTwo"><strong>Legend</strong></a>
                 </h4>
               </div>
@@ -284,22 +324,9 @@
 
               </div>
             </div>
+            
+
             <!--
-            <div class="panel panel-default">
-              <div class="panel-heading">
-                <h4 class="panel-title">
-                  <i class="fa fa-fw fa-bars"></i> 
-                  <a data-toggle="collapse" data-parent="#accordion" href="#collapseFour"><strong>Background</strong></a>
-                </h4>
-              </div>
-              <div id="collapseFour" class="panel-collapse collapse">
-                <ul class="list-group">
-                  <li class="list-group-item"><i class="fa fa-delicious fa-fw"></i> <a href="#">Bing Maps</a></li>
-                  <li class="list-group-item"><i class="fa fa-th fa-fw"></i> <a href="#">OpenStreetMap (MapQuest)</a></li>
-                  <li class="list-group-item"><i class="fa fa-th fa-fw"></i> <a href="#">Google Maps</a></li>
-                </ul>
-              </div>
-            </div>
             <div class="panel panel-default">
               <div class="panel-heading">
                 <h4 class="panel-title">

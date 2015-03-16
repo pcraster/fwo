@@ -129,10 +129,10 @@ def project(slug=None):
 		if request.method=="POST":
 			f = request.files['uploadfile']
 			if f and request.form.get("action","")=="upload":
-				upload_file=os.path.join(project.projectdata,"map",f.filename)
-				f.save(upload_file)
 				if f.filename.endswith(".zip"):
 					try:
+						upload_file=os.path.join(project.projectdata,"map",f.filename)
+						f.save(upload_file)
 						#Don't use zipfile with context manager on py 2.6
 						#https://bugs.launchpad.net/horizon/+bug/955994
 						zf=zipfile.ZipFile(upload_file)
@@ -145,6 +145,37 @@ def project(slug=None):
 						flash("File <code>%s</code> was uploaded to the project basemap. Timestamp: <code>%s</code>"%(f.filename,project.basemap_version),"ok")
 					except Exception as e:
 						flash("Zip file could not be extracted! Hint: %s"%(e),"error")
+				if f.filename.endswith(".tif"):
+					try:
+						basemaps=os.path.join(project.projectdata,"backgroundlayers")
+						if not os.path.isdir(basemaps):
+							os.makedirs(basemaps)
+						upload_file=os.path.join(basemaps,f.filename)
+						f.save(upload_file)
+						#project.background_layers_update()
+						(head,tail)=os.path.split(upload_file)
+						name=tail.split(".")[0]
+
+						l=BackgroundLayer.query.filter_by(campaign_id=project.id,name=name).first()
+						if l==None:
+							#make new one
+							db.session.add(BackgroundLayer(
+								campaign_id=project.id,
+								name=name,
+								filename=upload_file
+							))
+						else:
+							flash("Background layer with this name exists already... updating instead!")
+							#udpate it..
+							l.name=name
+							l.filename=upload_file
+
+						db.session.commit()
+						project.background_layers_update()
+						flash("Saved tiff file to project basemaps dir. make mapserver mapfile.","ok")
+					except Exception as e:
+						flash("Tif file could not be saved. Hint: %s"%(e),"error")
+
 			elif request.form.get("action","")=="clearall":
 				flash("Clearing all basemap data!","ok")
 			elif request.form.get("action","")=="reload":
@@ -157,7 +188,8 @@ def project(slug=None):
 
 		users=User.query.filter(User.campaigns.contains(project)).all()
 		enrollable_users=User.query.filter(~User.campaigns.contains(project)).all()
-		return render_template("project.html",project=project,users=users,enrollable_users=enrollable_users)
+		backgroundlayers=BackgroundLayer.query.filter_by(campaign_id=project.id).all()
+		return render_template("project.html",project=project,users=users,enrollable_users=enrollable_users,backgroundlayers=backgroundlayers)
 	else:
 		#
 		#Else forward the user to the user's fieldwork homepage
@@ -196,9 +228,11 @@ def project_maps(slug,user_id):
 	
 	cu=CampaignUsers.query.filter(CampaignUsers.campaign_id==project.id,CampaignUsers.user_id==user.id).first()
 	if not project.basemap:
-		flash("No basemap has been uploaded by project administrator yet.","error")
-	usermap=project.basemap_for(user_id)
-	return render_template("project/maps.html",project=project,user=user,wms_key=cu.wms_key)
+		flash("No basemap has been uploaded by the project administrator yet.","info")
+		return render_template("project/empty.html",project=project,user=user)
+	else:
+		mapfile=project.basemap_for(user_id)
+		return render_template("project/maps.html",project=project,user=user,wms_key=cu.wms_key,mapfile=mapfile,mapserver_url=app.config.get("MAPSERVER_URL"))
 
 
 @app.route("/projects/<slug>/<user_id>/feedback",methods=["GET","POST"])
@@ -225,8 +259,12 @@ def project_feedback(slug,user_id):
 			return jsonify(status="OK",message="Feedback posted!"),200
 		except Exception as e:
 			return jsonify(status="FAIL",message="Something went wrong trying to add feedback. Hint: %s"%(e)),500
-	feedback=Feedback.query.filter_by(user_id=user.id).order_by("comment_date desc").all()
-	return render_template("project/feedback.html",project=project,user=user,feedback=feedback,wms_key=cu.wms_key)
+	feedback=Feedback.query.filter_by(user_id=user.id,campaign_id=project.id).order_by("comment_date desc").all()
+	if not feedback:
+		flash("No feedback has been left in this project yet.","info")
+		return render_template("project/empty.html",project=project,user=user)
+	else:
+		return render_template("project/feedback.html",project=project,user=user,feedback=feedback,wms_key=cu.wms_key)
 
 @app.route("/projects/<slug>/<user_id>/collaborate")
 @login_required

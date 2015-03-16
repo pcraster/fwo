@@ -18,7 +18,7 @@ except Exception as e:
 def main():
 	print "Lets go"
 	parser=argparse.ArgumentParser(description="Test a fieldwork project")
-	parser.add_argument("-c", "--clone", help="QGIS project file to clone")
+	parser.add_argument("-c", "--clone", help="QGIS project file to try and read/write")
 	args = parser.parse_args()
 
 	QgsApplication([], False) #initialize the qgis application
@@ -30,6 +30,8 @@ def main():
 	print QgsApplication.showSettings()
 	print "Provider list"
 	plist=QgsProviderRegistry.instance().providerList()
+	if len(plist)==0:
+		print " * NO PROVIDERS FOUND!!!"
 	for p in plist:
 		print " * %s"%(str(p))
 
@@ -41,8 +43,15 @@ def main():
 		sys.exit(3)
 
 	root = QgsProject.instance().layerTreeRoot()
-	layer1 = QgsVectorLayer("Point", "Layer 1", "memory")
-	QgsMapLayerRegistry.instance().addMapLayer(layer1)
+
+
+	layers=QgsMapLayerRegistry.instance().mapLayers()
+
+	print "Layers in this project:"
+	for name,layer in layers.iteritems():
+		print " name=%s"%(name)
+	#layer1 = QgsVectorLayer("Point", "Layer 1", "memory")
+	#QgsMapLayerRegistry.instance().addMapLayer(layer1)
 	#node_layer1 = root.addLayer(layer1)
 
 	proj.write(QFileInfo("/tmp/output.qgs"))

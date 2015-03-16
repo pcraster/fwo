@@ -73,9 +73,12 @@ def sanitize_layer_names(layernames):
 		yield (old_layer_id,layer_id)
 
 def safe_layer_names():
+	print " * Safe layer names:"
 	replacements={}
 	layers=QgsMapLayerRegistry.instance().mapLayers()
+
 	for name,layer in layers.iteritems():
+		print " name=%s"%(name)
 		prettyname=layer.name()
 		newname=re.sub(r'\W+',' ',str(layer.name())).lower()
 		newname="_".join(map(str,newname.split()))
@@ -135,6 +138,8 @@ def main():
 	#parser.add_argument("--test", help="Test the script")
 	args = parser.parse_args()
 
+
+
 	randomstring=''.join(random.choice("abcdefghijklmnopqrstuvwxyz") for _ in range(6))
 	targfile=os.path.join(args.target,"map","project-%s.qgs"%(randomstring))
 
@@ -148,7 +153,7 @@ def main():
 
 			QgsApplication([], False) #initialize the qgis application
 
-			QgsApplication.setPrefixPath("/usr/local", True)
+			#QgsApplication.setPrefixPath("", True)
 
 			QgsApplication.initQgis()
 
@@ -158,6 +163,15 @@ def main():
 			except Exception as e:
 				print " * Failed to load project clone file %s"%(args.clone)
 				sys.exit(3)
+
+			print "Settings"
+			print QgsApplication.showSettings()
+			print "Provider list"
+			plist=QgsProviderRegistry.instance().providerList()
+			if len(plist)==0:
+				print " * NO PROVIDERS FOUND!!!"
+			for p in plist:
+				print " * %s"%(str(p))
 
 			#
 			#Overwrite various properties in the project which make it easier/neater to serve via WMS
@@ -229,7 +243,8 @@ def main():
 						uri=QgsDataSourceURI()
 						uri.setDatabase(sqlite_db)
 						uri.setDataSource("", sqlite_table, "geom")
-						print " * DB URI (new):"+uri.uri()
+						print " * Layer URI:"
+						print uri.uri()
 
 
 						existing_layer=get_layer_by_title(title)
@@ -262,6 +277,8 @@ def main():
 								vectorlayer=QgsVectorLayer(uri.uri(),title,"spatialite")
 								if vectorlayer.isValid():
 									print " * Vector layer is valid!"
+								else:
+									print " * Vector layer is invalid!!"
 							except Exception as e:
 								print " * Failed to create layer!"
 							

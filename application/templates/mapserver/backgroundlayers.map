@@ -1,0 +1,60 @@
+MAP
+
+#{{project.background_layers}}
+    NAME "backgroundlayers"
+    STATUS ON
+    SIZE 600 400
+
+    UNITS DD
+    IMAGECOLOR 255 255 255
+    MAXSIZE 4096
+
+    WEB
+        IMAGEPATH "/ms4w/tmp/ms_tmp/"
+        IMAGEURL "/ms_tmp/"
+        METADATA 
+            "wms_title" "Background layers for Fieldwork Online project: {{project.name}}"
+            "wms_onlineresource" "http://127.0.0.1/cgi-bin/mapserv?map={{project.background_layers_mapfile}}&"
+            "wms_enable_request" "*"
+        END
+    END
+    {% for layer in project.background_layers %}
+    LAYER
+        NAME "{{layer.name}}"
+        METADATA
+            "wms_title"                 "{{layer.name}}"
+            "wms_onlineresource"        "http://127.0.0.1/cgi-bin/mapserv?map={{project.background_layers_mapfile}}&"
+            "wcs_formats"               "png8"
+            "wcs_nativeformat"          "png8"
+            "wms_enable_request"        "*"
+        END
+        TYPE RASTER
+        STATUS ON
+        DATA "{{layer.file}}"
+        PROJECTION
+            "init=epsg:3857"
+        END
+    END
+    {% endfor %}
+    PROJECTION
+        "init=epsg:3857"
+    END
+    OUTPUTFORMAT
+        NAME "png8"
+        DRIVER AGG/PNG8
+        MIMETYPE "image/png; mode=8bit"
+        IMAGEMODE RGB
+        EXTENSION "png"
+        FORMATOPTION "QUANTIZE_FORCE=on"
+        FORMATOPTION "QUANTIZE_COLORS=256"
+        FORMATOPTION "GAMMA=0.75"
+    END
+    OUTPUTFORMAT
+        NAME "jpeg"
+        DRIVER AGG/JPEG
+        MIMETYPE "image/jpeg"
+        IMAGEMODE RGB
+        EXTENSION "jpg"
+        FORMATOPTION "GAMMA=0.75"
+    END
+END

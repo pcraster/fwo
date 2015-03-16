@@ -28,7 +28,7 @@ def createdb():
 	Create the database.
 	"""
 	db.create_all()
-	initdb()
+	#initdb()
 
 @manager.command
 def clearuserdata():
@@ -117,8 +117,8 @@ def purgedb():
 	Drop and create the database. Use with care!
 	"""
 	dropdb()
-	initdb()
 	createdb()
+	initdb()
 
 @manager.command
 def createblueprint():

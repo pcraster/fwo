@@ -132,6 +132,18 @@ class User(db.Model, UserMixin):
 		else:
 			return Campaign.query.filter(Campaign.users.any(id=self.id)).all()
 
+class BackgroundLayer(db.Model):
+	id = db.Column(db.Integer(), primary_key=True)
+	campaign_id = db.Column(db.Integer(), db.ForeignKey('campaign.id'))
+	name = db.Column(db.String(255), nullable=True, unique=False)
+	filename = db.Column(db.String(255), nullable=True, unique=False)
+	description = db.Column(db.Text(), nullable=True, unique=False)
+	is_default = db.Column(db.Boolean(), nullable=False, default=False)
+	def __init__(self,campaign_id,name,filename):
+		self.campaign_id=campaign_id
+		self.name=name
+		self.filename=filename
+
 class Feedback(db.Model):
 	id = db.Column(db.Integer(), primary_key=True)
 	user_id = db.Column(db.Integer(), db.ForeignKey('user.id'))
@@ -207,6 +219,7 @@ class Campaign(db.Model):
 			os.makedirs(os.path.join(basedir,"userdata"))
 			os.makedirs(os.path.join(basedir,"projectdata","map"))
 			os.makedirs(os.path.join(basedir,"projectdata","attachments"))
+			os.makedirs(os.path.join(basedir,"projectdata","backgroundlayers"))
 
 	def __repr__(self):
 		return "<Campaign: /campaigns/%s>"%(self.slug)
@@ -290,6 +303,7 @@ class Campaign(db.Model):
 						cu.time_basemapversion=db.func.now()
 						db.session.commit()
 						flash("Reloaded basemap data for user <code>%s</code>"%(user.username),"ok")
+						flash("Command: <code>%s</code>"%(" ".join(cmd)))
 					else:
 						flash("Failed to reload basemap data for user <code>%s</code>. The map update script returned status code <code>%d</code>."%(user.username,returncode),"error")
 						flash("Command: <code>%s</code>"%(" ".join(cmd)))
@@ -348,7 +362,36 @@ class Campaign(db.Model):
 		Returns the full path to the features.sqlite file, which contains the feature data that has been uploaded by the user. When no data has been uploaded yet this file does not exist.
 		"""
 		return os.path.join(self.userdata(user_id),"map","features.sqlite")
-
+	@property
+	def background_layers(self):
+		"""
+		Returns a list of tif tiles in the project's backgroundlayers directory.
+		"""
+		file_list=[]
+		l=BackgroundLayer.query.filter_by(campaign_id=self.id).all()
+		for layer in l:
+			try:
+				file_list.append({
+					'name':layer.name,
+					'file':layer.filename
+					})
+			except:
+				pass
+		return file_list
+	@property
+	def background_layer_default(self):
+		l=BackgroundLayer.query.filter_by(campaign_id=self.id).first()
+		return l.name
+	@property
+	def background_layers_mapfile(self):
+		return os.path.join(self.projectdata,"backgroundlayers","backgroundlayers.map")
+	def background_layers_update(self):
+		"""
+		Updates the backgroundlayers.map file with the currently uplaoded tif files.
+		"""
+		backgroundlayers_mapfile=render_template("mapserver/backgroundlayers.map",project=self)
+		with open(self.background_layers_mapfile,'w') as f:
+			f.write(backgroundlayers_mapfile)
 	def attachments(self,user_id):
 		"""
 		Returns a list of attachments that the specified user has uploaded to this project. Use sorted(glob.glob(...), key=os.path.getmtime) to sort by modification time instead.

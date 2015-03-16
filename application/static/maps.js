@@ -24,12 +24,18 @@ $(function() {
 		url: WMS_URL,
 		params: { 
 			'LAYERS': getVisibleWmsLayers(),
-			'FORMAT': "image/jpeg",
-			'IMAGE_QUALITY': '20'
+			'FORMAT': "image/png; mode=8bit"
 		}
 	});
 	var wmsLayer=new ol.layer.Image({
 		source: window.wmsSource
+	});
+	
+	window.tileSource=new ol.source.TileWMS((BACKGROUND_LAYERS));
+
+	window.wmsTileLayer=new ol.layer.Tile({
+		//extent: [-13884991, 2870341, -7455066, 6338219],
+		source: window.tileSource
 	});
 	var backgroundLayer=new ol.layer.Tile({
 		visible: true,
@@ -88,7 +94,7 @@ $(function() {
 	 */
 	window.map = new ol.Map({
 		target: 'map',
-		layers: [wmsLayer],
+		layers: [backgroundLayer,window.wmsTileLayer],//wmsLayer,wmsTileLayer
 		overlays: [overlay],
 		view: wmsView,
 		controls: ol.control.defaults().extend([

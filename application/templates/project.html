@@ -11,6 +11,7 @@
 	<h2 style="margin-top:10px;">{{project.name}}</h2>
 	<p>
 	{{project.description}}
+	{{project.background_layers}}
 	</p>
 </div>
 	<div class="row">
@@ -37,7 +38,7 @@
 					<div class="panel-body" style="padding:0;">
 						<table class="table table-condensed">
 						<thead>
-						<tr><th>Username</th><th>Full name</th><th>E-mail</th><th>Last data upload (UTC)</th><th>Web feature services</th></tr>
+						<tr><th>Username</th><th>Full name</th><th>E-mail</th><th>Details</th></tr>
 						</thead>
 						<tbody>
 						{% for user in users %}
@@ -62,24 +63,14 @@
 							<td>
 							{% for membership in user.memberships %}
 								{% if membership.campaign_id == project.id %}
-								{{membership.text_lastactivity}}
+								Last data upload: <code>{{membership.text_lastactivity}}</code><br/>
+								{% endif %}
+								{% if membership.campaign_id == project.id %}
+								Web services: <code><i class="fa fa-share-alt"></i> {{membership.wms_url}}</code>
 								{% endif %}
 							{% endfor %}
 							</td>
 
-							<td>
-								{% for membership in user.memberships %}
-									{% if membership.campaign_id == project.id %}
-									<code><i class="fa fa-share-alt"></i> {{membership.wms_url}}</code>
-									<!--
-								    <div class="input-group">
-								      <div class="input-group-addon"><i class="fa fa-share-alt"></i></div>
-								      <input type="text" class="form-control wfs-copy-link" id="exampleInputAmount" style="width:100px;font-family:mono;height:30px;font-size:0.7em;" value="{{membership.wms_url}}">
-								    </div>
-								    -->
-									{% endif %}
-								{% endfor %}
-  							</td>
 							<td style="text-align:right;">
 
 								{% for membership in user.memberships %}
@@ -159,10 +150,17 @@
 
 			<div class="panel panel-default">
 					<div class="panel-heading">
-						<strong>Upload new QGIS project basemap</strong>
+						<strong>Upload project basemap (zip) or background layers (tif)</strong>
 					</div>
 					{% if current_user.is_admin %}
 						<div class="panel-body">
+						The following background layers have been uploaded:
+						{% for layer in backgroundlayers %}
+							<code>{{layer.name}}</code> 
+						{% endfor %}. These layers can be selected in the "Background Maps" panel of the user workspaces.
+						</div>
+						<div class="panel-body">
+
 							{% if project.basemap_version %}
 								The current version of the basemap for this project dates from: <code>{{project.basemap_version}}</code>
 							{% else %}
