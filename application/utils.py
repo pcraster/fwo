@@ -77,7 +77,11 @@ def excel_parser(filename,spatialite_file):
 	try:
 		conn = db.connect(spatialite_file)
 		cur = conn.cursor()
-		cur.execute("SELECT InitSpatialMetadata(1)") #don't forget to add the 1, otherwise this takes forever...
+		try:
+			cur.execute("SELECT InitSpatialMetadata(1)")
+		except Exception:
+			cur.execute("SELECT InitSpatialMetadata()")
+		conn.commit()
 		cur.executescript("""
 			CREATE TABLE IF NOT EXISTS fwo_metadata (
 				name TEXT NOT NULL PRIMARY KEY,
@@ -86,6 +90,7 @@ def excel_parser(filename,spatialite_file):
 				description TEXT
 			)
 		""")
+		conn.commit()
 		flash("Loaded file <code>%s</code>"%(filename),"debug")
 	except Exception as e:
 		flash("Could not open or create metadata tables in sqlite file <code>%s</code>. Hint: %s"%(spatialite_file,e),"error")
@@ -193,20 +198,30 @@ def excel_parser(filename,spatialite_file):
 			tablenames.append(proposed_tablename)
 			tablename=proposed_tablename
 
-			#create the table for storing the points
-			create_table_sql="""
-				SELECT DiscardGeometryColumn('%s','geom');
-				DROP TABLE IF EXISTS %s;
+			cur.execute("SELECT DiscardGeometryColumn('%s','geom');"%(tablename))
+			conn.commit()
+
+			cur.execute("DROP TABLE IF EXISTS %s;"%(tablename))
+			conn.commit()
+
+			cur.execute("""
 				CREATE TABLE %s (
 					fwo_id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
 					%s
 				);
-				SELECT AddGeometryColumn('%s','geom', %s, 'POINT', 'XY');
-				DELETE FROM fwo_metadata WHERE name='%s';
-				INSERT INTO fwo_metadata (name,title) VALUES ('%s','%s');
-			"""%(tablename,tablename,tablename,", ".join(["%s %s"%(h["header"],h["datatype"]) for h in header_list]),tablename,epsg,tablename,tablename,sheetname)
-			cur.executescript(create_table_sql)
+			"""%(tablename,", ".join(["%s %s"%(h["header"],h["datatype"]) for h in header_list])))
 			conn.commit()
+
+
+			cur.execute("SELECT AddGeometryColumn('%s','geom', %s, 'POINT', 'XY');"%(tablename,epsg))
+			conn.commit()
+
+			cur.execute("DELETE FROM fwo_metadata WHERE name='%s';"%(tablename))
+			conn.commit()
+
+			cur.execute("INSERT INTO fwo_metadata (name,title) VALUES ('%s','%s');"%(tablename,sheetname))
+			conn.commit()
+
 
 			#compile a list of georeferenced points
 			num_points=0
