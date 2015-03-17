@@ -94,7 +94,7 @@ $(function() {
 	 */
 	window.map = new ol.Map({
 		target: 'map',
-		layers: [backgroundLayer,window.wmsTileLayer],//wmsLayer,wmsTileLayer
+		layers: [backgroundLayer,window.wmsTileLayer,wmsLayer],//wmsLayer,wmsTileLayer
 		overlays: [overlay],
 		view: wmsView,
 		controls: ol.control.defaults().extend([

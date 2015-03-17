@@ -153,7 +153,8 @@ def main():
 
 			QgsApplication([], False) #initialize the qgis application
 
-			#QgsApplication.setPrefixPath("", True)
+			if os.path.exists("/etc/redhat-release"):
+				QgsApplication.setPrefixPath("/usr/local", True)
 
 			QgsApplication.initQgis()
 
