@@ -31,7 +31,7 @@
         {% if current_user.id and project and user %}
 	        <li><a href="/projects/{{project.slug}}/{{user.id}}/data"><i class="fa fa-database"></i> Data</a></li>
 	        <li><a href="/projects/{{project.slug}}/{{user.id}}/maps"><i class="fa fa-map-marker"></i> Maps</a></li>
-	        <li><a href="/projects/{{project.slug}}/{{user.id}}/feedback"><i class="fa fa-comment"></i> Feedback</a></li>
+	        <li><a href="/projects/{{project.slug}}/{{user.id}}/feedback"><i class="fa fa-comment"></i> Comments and feedback</a></li>
 	        <li><a href="/projects/{{project.slug}}/{{user.id}}/collaborate"><i class="fa fa-share-alt"></i> Collaborate</a></li>
         {% endif %}
         {% if current_user.id and project and not user %}

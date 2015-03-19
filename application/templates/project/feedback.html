@@ -10,6 +10,19 @@
     	ul#feedback-list p.comment-body {
     		margin:0;
     	}
+p#comment-body {
+    margin-bottom:0;
+}
+    p.reply-body {
+        padding-top:5px;padding-left:22px;padding-right:150px;
+}
+ul#comment-replies {
+    margin-bottom:0;
+}
+ul#comment-replies li {
+    margin-bottom:0;
+    padding-bottom:0;
+}
     </style>
 {% endblock %}
 {% block footjs %}
@@ -19,6 +32,10 @@
 	<script type="text/javascript" src="/static/js/ol.js"></script>
 	<script type="text/javascript" src="/static/fieldworkonline.js"></script>
 	<script type="text/javascript">
+        String.prototype.trunc = String.prototype.trunc ||
+      function(n){
+          return this.length>n ? this.substr(0,n-1)+'&hellip;' : this;
+      };
 		$(function() {
 			function point_as_layer(coord) {
 				/* returns a ready made vector layer with a single point. this saves
@@ -86,6 +103,7 @@
 				if (!window.hasOwnProperty("commentmap")) {
 					initialize_commentmap(_wmslayers)
 				}
+
 				//update the wms and the marker layers to reflect the comment
 				//where submit was clicked
 				window.commentmap.getLayers().forEach(function (lyr) {
@@ -119,45 +137,186 @@
 			//trigger the click event on the first link
 			$('a.load-feedback-link').first().click()
 		});
+
+    FWO={
+        comments:{
+            data:[],
+            get_comment_by_id:function(id){
+                for(var i in FWO.comments.data) {
+                    if(FWO.comments.data[i].id==id) {
+                        return FWO.comments.data[i]
+                    }
+                }
+            },
+            reload:function(comment_id) {
+                $.getJSON("feedback.json", function(data){
+                    FWO.comments.data=data
+                    FWO.comments.list.html("")
+                    $.each(data,function(i){
+                        comment=data[i]
+                        FWO.comments.list.append('<a href="#" class="list-group-item feedback-link" data-comment-id="'+comment.id+'"><strong>Comment by '+comment.comment_by+'</strong> <span style="float:right;">'+comment.comment_age+' ('+comment.replies.length+' replies)</span><p class="comment-body">'+comment.comment_body.trunc(130)+'</p></a>')
+                        
+                    })
+                    $('a.feedback-link').click(function(evt){
+                        evt.preventDefault()
+                        link=$(this)
+                        FWO.comments.select_comment(link.data('comment-id'))
+                    })
+                    if(typeof comment_id=='undefined') {
+                        $('a.feedback-link').first().click()
+                    } else {
+                        FWO.comments.select_comment(comment_id)
+                    }
+                    $("#num-comments").html(FWO.comments.data.length)
+                })
+                $("#reply-body").val("")
+            },
+            init:function(comment_id) {
+                FWO.comments.reload()
+                $("form#comment-reply-form").submit(function(event) {
+                    event.preventDefault()
+                    form=$(this)
+                    console.log("Posting a reply!")
+                    $.post(form.attr("action"), form.serialize(),function(){
+                        sel_comment=parseInt($('#comment-parent').val())
+                        FWO.comments.reload(sel_comment)
+                    })
+                })
+                FWO.comments.map.init()
+            },
+            select_comment:function(comment_id) {
+                comment=typeof comment_id=='undefined'?FWO.comments.data[0]:FWO.comments.get_comment_by_id(comment_id)
+                detail=$('div#comment-detail')
+                replies=detail.find('ul#comment-replies')
+
+                $('a.feedback-link').removeClass("active")
+                $('a.feedback-link').each(function(){
+    
+                    link=$(this)
+                    if(link.data('comment-id')==comment.id) {
+                        link.addClass("active")
+                    }
+                })
+
+                detail.find('#comment-body').html(comment.comment_body)
+                detail.find('#comment-by').html(comment.comment_by)
+                detail.find('#comment-age').html(comment.comment_age)
+                detail.find('#comment-parent').val(comment.id)
+
+                replies.html("")
+                for(var r in comment.replies) {
+                    reply=comment.replies[r]
+                    replies.append('<li class="list-group-item" style="border:none;padding-left:0px;"><strong><i class="fa fa-reply fa-rotate-180 fa-fw"></i> Reply by '+reply.reply_by+'</strong> posted '+reply.comment_age+'<p class="reply-body">'+reply.comment_body+'</p></li>')
+                }
+                FWO.comments.map.load_comment(comment_id)
+                return true
+            },
+            post_reply(comment_id,reply) {
+                
+            },
+            list:$('ul#feedback-list'),
+            map:{
+                background_layer:new ol.layer.Tile({
+                    visible: true,
+                    preload: Infinity,
+                    source: new ol.source.BingMaps({key: 'ApEqbYdQJSwOJ-KqrCQsI1AAouPQHkng2AjdJsQjLjK55P0yNQc-eEfOLUPUAAMt', imagerySet: 'Aerial'})
+                }),
+                obj:new ol.Map({
+                    target: 'commentmap',
+                    layers: [],
+                    view: new ol.View({	
+                        center: ol.proj.transform([5.721586,44.42], 'EPSG:4326', 'EPSG:3857'),
+                        zoom: 11
+                    }),
+                    controls: ol.control.defaults().extend([
+                        new ol.control.ScaleLine()
+                    ])
+                }),
+                init:function(){
+                    FWO.comments.map.obj.addLayer(FWO.comments.map.background_layer)
+                },
+                load_comment:function(comment_id) {
+                    comment=FWO.comments.get_comment_by_id(comment_id)
+                    var _xyz=comment.map_view.split(",")
+				FWO.comments.map.obj.setView(
+					new ol.View({	
+				 		center: [parseFloat(_xyz[0]),parseFloat(_xyz[1])],
+				 		zoom: parseInt(_xyz[2])
+					})
+				);
+                }
+            }
+        }
+    }
+    $(document).ready(function() {
+        FWO.comments.init()
+    });
+    
+
+
 	</script>
 {% endblock %}
 {% block content %}
-	<h2>Project feedback</h2>
+	<!--<h2>Project feedback</h2>-->
+&nbsp;
 	<div class="row">
-		<div class="col-md-5 col-sm-5">
+		<div class="col-md-6 col-sm-6">
 			<div class="panel panel-default">
 				<div class="panel-heading">
-					<strong>Feedback overview</strong>
+					<strong>Overview of recent comments and feedback</strong>
 				</div>
 				
-				<ul class="list-group" id="feedback-list" >
-					{% for comment in feedback %}
-					
-					<a href="#" class="list-group-item load-feedback-link" data-map-view="{{comment.map_view}}" data-map-marker="{{comment.map_marker}}" data-map-state="{{comment.map_state}}">
-						<span style="font-size:0.9em;">Comment by {{comment.comment_by_user.username}} posted {{comment.comment_age}}</span> 
-						<p class="comment-body">
-							{{comment.comment_body}}
-						</p>
-					</a>
-					{% endfor %}
+				<ul class="list-group" id="feedback-list" style="height:260px;overflow-y:scroll;" >
+                        <!--filled dynamically-->
 				</ul>
 				
 			</div>
 		</div>
-		<div class="col-md-7 col-sm-7">
-			<div class="panel panel-default">
+		<div class="col-md-6 col-sm-6">
+			<div class="panel panel-default" >
 				<div class="panel-heading">
-					<strong>Feedback details</strong>
+					<strong>Map</strong>
 				</div>
-				<div class="panel-body" id="commentmap"  style="padding:0;margin:0;height:360px;">
+				<div class="panel-body" id="commentmap"  style="padding:0;margin:0;height:260px;">
 
 				</div>
-				<div class="panel-body" id="feedback-detail" style="background-color:#f5f5f5">
-					<strong>Comment:</strong>
-					<p id="comment-body"></p>
-				</div>
+			</div>
 		</div>
 	</div>
+	<div class="row">
+            <div class="col-md-12 col-sm-12">
+			<div class="panel panel-default" id="comment-detail">
+
+                    <div class="panel-heading">
+                        <strong><i class="fa fa-quote-left"></i> Original comment by <span id="comment-by"></span></strong> posted <span id="comment-age"></span>
+                    </div>
+                    
+                    <div class="panel-body" id="feedback-detail">
+                        <div class="comment-original">
+                            <p id="comment-body"></p>
+                        </div>
+                        <ul class="list-group" id="comment-replies" >
+                            <!--replies are filled dynamically-->
+                        </ul>
+
+                    </div>
+                    
+                    <div class="panel-body" id="feedback-reply" style="background-color:#f5f5f5;border-top:1px solid #ddd;">
+                        <form id="comment-reply-form" action="">
+                            <input name="comment_parent" id="comment-parent" type="hidden" value="">
+                            <div class="form-group" style="margin-top:5px;">
+                            <!--<label for="exampleInputEmail1">Comments or feedback</label>-->
+                            <textarea name="comment_body" class="form-control" id="reply-body" placeholder=""></textarea>
+                            </div>
+                            <div class="form-group" style="margin-top:5px;text-align:left;" >
+                            <button type="submit" class="btn btn-primary"><i class="fa fa-check"></i> Post a reply</button>
+                            </div>
+                        </form>
+                    </div>
+
+
+        </div>
+</div>
 {% endblock %}
 
 
