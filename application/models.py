@@ -165,7 +165,7 @@ class Feedback(db.Model):
     @property
     def comment_age(self):
         delta=datetime.datetime.utcnow()-self.comment_date
-        seconds=delta.total_seconds()
+        seconds=delta.seconds+(delta.days*24*3600)
         if seconds < 60:
             return "Less than one minute ago"
         if seconds < 3600:
@@ -197,7 +197,7 @@ class FeedbackReply(db.Model):
     @property
     def comment_age(self):
         delta=datetime.datetime.utcnow()-self.comment_date
-        seconds=delta.total_seconds()
+        seconds=delta.seconds+(delta.days*24*3600)
         if seconds < 60:
             return "Less than one minute ago"
         if seconds < 3600:
