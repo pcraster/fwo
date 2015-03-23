@@ -475,7 +475,9 @@ class CampaignUsers(db.Model):
             return "No data uploaded yet"
         else:
             delta=datetime.datetime.utcnow()-self.time_lastactivity
-            seconds=delta.total_seconds()
+            #total_seconds() is new in python 2.7
+            #seconds=delta.total_seconds()
+            seconds=delta.seconds+(delta.days*24*3600)
             if seconds < 60:
                 return "Less than one minute ago"
             if seconds < 3600:

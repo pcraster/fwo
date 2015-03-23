@@ -254,9 +254,17 @@
           li.addClass('active')
         }
       })
-      window.tileSource.updateParams({
-        'LAYERS':name
-      })
+      if(name!='bing-aerial'){
+          window.tileSource.updateParams({
+            'LAYERS':name
+          })
+            window.wmsTileLayer.setVisible(true)
+          window.backgroundLayer.setVisible(false)
+        } else {
+            window.backgroundLayer.setVisible(true)
+            window.wmsTileLayer.setVisible(false)
+            
+        }
       return false;
     }
   </script>
@@ -307,6 +315,7 @@
                   {% for layer in project.background_layers %}
                     <li class="list-group-item" id="background-layer-{{layer.name}}"><i class="fa fa-check fa-fw"></i> <a href="#" onclick="setBackgroundLayer('{{layer.name}}');">{{layer.name}}</a></li>
                   {% endfor %}
+                    <li class="list-group-item" id="background-layer-bing-aerial"><i class="fa fa-check fa-fw"></i> <a href="#" onclick="setBackgroundLayer('bing-aerial');">bing-aerial</a></li>
                 </ul>
               </div>
             </div>

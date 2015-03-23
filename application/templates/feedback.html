@@ -81,14 +81,12 @@
 		if(window['feedbackmap'] == undefined) {
 			window.feedbackmap = new ol.Map({target: 'feedback-map'});
 		}
+        
 		window.feedbackmap.setView(view)
 		window.map.getLayers().forEach(function(lyr,ix,ar){
 			window.feedbackmap.addLayer(lyr)
 		})
 		window.feedbackmap.addLayer(vectorLayer)
-
-		console.log(window.wmsSource.getUrl())
-		console.log()
 		
 		window.feedbackmap.on('moveend',function(){
 			_mapstate=window.wmsSource.getParams()['LAYERS']

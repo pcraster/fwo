@@ -305,6 +305,7 @@ def project_feedback_json(slug,user_id):
                 'comment_body':comment.comment_body,
                 'map_state':comment.map_state,
                 'map_view':comment.map_view,
+                'map_marker':comment.map_marker,
                 'replies':replies
             })
             

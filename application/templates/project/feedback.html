@@ -36,7 +36,6 @@ ul#comment-replies li {
       function(n){
           return this.length>n ? this.substr(0,n-1)+'&hellip;' : this;
       };
-		$(function() {
 			function point_as_layer(coord) {
 				/* returns a ready made vector layer with a single point. this saves
 				   some hassle with trying to grab the point and move it. */
@@ -62,6 +61,8 @@ ul#comment-replies li {
 			    _lyr._fwid="marker"
 			    return _lyr
 			}
+		$(function() {
+
 			function initialize_commentmap(wmslayers) {
 				var backgroundLayer=new ol.layer.Tile({
 					visible: true,
@@ -221,6 +222,7 @@ ul#comment-replies li {
                     preload: Infinity,
                     source: new ol.source.BingMaps({key: 'ApEqbYdQJSwOJ-KqrCQsI1AAouPQHkng2AjdJsQjLjK55P0yNQc-eEfOLUPUAAMt', imagerySet: 'Aerial'})
                 }),
+                
                 obj:new ol.Map({
                     target: 'commentmap',
                     layers: [],
@@ -234,6 +236,8 @@ ul#comment-replies li {
                 }),
                 init:function(){
                     FWO.comments.map.obj.addLayer(FWO.comments.map.background_layer)
+                    var marker_layer=point_as_layer()
+                    FWO.comments.map.obj.addLayer(marker_layer)
                 },
                 load_comment:function(comment_id) {
                     comment=FWO.comments.get_comment_by_id(comment_id)
@@ -244,6 +248,22 @@ ul#comment-replies li {
 				 		zoom: parseInt(_xyz[2])
 					})
 				);
+                    FWO.comments.map.move_marker_to(comment.map_marker)
+                },
+                move_marker_to:function(coord) {
+				FWO.comments.map.obj.getLayers().forEach(function (lyr) {
+					if(lyr.hasOwnProperty("_fwid")) {
+						if(lyr._fwid=="marker") {
+							//this is the marker layer. just remove it, we'll add a new one rght after.
+							FWO.comments.map.obj.removeLayer(lyr)
+						}
+					}
+				});
+				var _xy=coord.split(",")
+				var _newlyr=point_as_layer([parseFloat(_xy[0]),parseFloat(_xy[1])])
+
+                    
+                    FWO.comments.map.obj.addLayer(_newlyr)
                 }
             }
         }

@@ -37,7 +37,7 @@ $(function() {
 		//extent: [-13884991, 2870341, -7455066, 6338219],
 		source: window.tileSource
 	});
-	var backgroundLayer=new ol.layer.Tile({
+	window.backgroundLayer=new ol.layer.Tile({
 		visible: true,
 		preload: Infinity,
 		source: new ol.source.BingMaps({
@@ -94,7 +94,7 @@ $(function() {
 	 */
 	window.map = new ol.Map({
 		target: 'map',
-		layers: [backgroundLayer,window.wmsTileLayer,wmsLayer],//wmsLayer,wmsTileLayer
+		layers: [window.backgroundLayer,window.wmsTileLayer,wmsLayer],//wmsLayer,wmsTileLayer
 		overlays: [overlay],
 		view: wmsView,
 		controls: ol.control.defaults().extend([
@@ -125,5 +125,6 @@ $(function() {
 		}
 	});
 
+        $('ul#background-layers li a').first().click()
 
 });
