@@ -31,8 +31,8 @@
         {% if current_user.id and project and user %}
 	        <li><a href="/projects/{{project.slug}}/{{user.id}}/data"><i class="fa fa-database"></i> Data</a></li>
 	        <li><a href="/projects/{{project.slug}}/{{user.id}}/maps"><i class="fa fa-map-marker"></i> Maps</a></li>
-	        <li><a href="/projects/{{project.slug}}/{{user.id}}/feedback"><i class="fa fa-comment"></i> Comments and feedback</a></li>
-	        <li><a href="/projects/{{project.slug}}/{{user.id}}/collaborate"><i class="fa fa-share-alt"></i> Collaborate</a></li>
+	        <li><a href="/projects/{{project.slug}}/{{user.id}}/feedback"><i class="fa fa-comment"></i> Comments and Feedback</a></li>
+	        <li><a href="/projects/{{project.slug}}/{{user.id}}/collaborate"><i class="fa fa-share-alt"></i> Web services</a></li>
         {% endif %}
         {% if current_user.id and project and not user %}
           <!--
@@ -41,6 +41,18 @@
           -->
         {% endif %}
       </ul>
+
+
+  <form class="navbar-form navbar-right" role="form">
+  {% if current_user.is_admin %}
+  <a href="/admin" type="submit" class="btn btn-default" style="border-color:#444;background-color:#222;color:#ddd;"><i class="fa fa-wrench"></i> Admin</a>
+  {% endif %}
+  <a href="/settings" type="submit" class="btn btn-default" style="border-color:#444;background-color:#222;color:#ddd;"><i class="fa fa-user"></i> My Account</a>
+   <a href="/user/logout" type="submit" class="btn btn-default" style="border-color:#444;background-color:#222;color:#ddd;"><i class="fa fa-times"></i> Log out</a>
+  </form>
+  <p class="navbar-text navbar-right" style="color:#ddd;">Logged in as <strong>{{current_user.username}}</strong></p>
+
+<!--
       <ul class="nav navbar-nav navbar-right" style="margin-right:0px;">
         {% if current_user.is_admin %}
         <li><a href="/admin"><i class="fa fa-wrench"></i> Administration</a></li>
@@ -48,10 +60,7 @@
         <li><a href="/settings"><i class="fa fa-user"></i> Settings</a></li>
         <li><a href="/user/logout"><i class="fa fa-times"></i> Log out</a></li>
       </ul>
-      {% if current_user.id %}
-      	
-	   {% endif %}
-
+-->
     <!--</div>--><!-- /.navbar-collapse -->
   </div><!-- /.container-fluid -->
 </nav>
