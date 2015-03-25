@@ -320,8 +320,8 @@ def main():
 				#laayer_id=str(layer.id())
 				#id_replacements.append((_layer_id,newname))
 				#print "%s->%s (id=%s; type=%s)"%(_name,newname,_layer_id,layer.type())
-				#if layer.type()==0:
-				#	wfs_layers.append(_layer_id)
+				if layer.type()==0:
+					wfs_layers.append(_layer_id)
 
 
 			#print "Vector layers:"

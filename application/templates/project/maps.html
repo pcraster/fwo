@@ -231,8 +231,13 @@
         if(filename_match) {
           var filename_extension=filename_match[1].toLowerCase()
           if($.inArray(filename_extension,filename_extensions.split(" "))!=-1) {
+            var is_image=(filename_extension=='png' || filename_extension=='jpeg' || filename_extension=='jpg')?true:false;
             var filename_url="file?filename="+filename;
-            filename_html+= "<i class='fa fa-paperclip'></i> <code><a href='"+filename_url+"' class='disabled'>"+filename+"</a></code><br/>"
+            if(is_image){
+              filename_html+= "<i class='fa fa-photo'></i> <code><a href='#' onclick=\"photoModal('"+filename_url+"')\" class='disabled'>"+filename+"</a></code><br/>"
+            } else {
+              filename_html+= "<i class='fa fa-paperclip'></i> <code><a href='"+filename_url+"' class='disabled' target='_blank'>"+filename+"</a></code><br/>"
+            }
           }
         }
       })
@@ -247,6 +252,7 @@
       }
     }
     function setBackgroundLayer(name) {
+      window.activeBackgroundLayer=name
       $('ul#background-layers li').each(function(){
         li=$(this)
         li.removeClass('active')

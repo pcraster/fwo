@@ -38,9 +38,23 @@
 			div.panel-body table.table td {
 				vertical-align: middle;
 			}
+
+			{% if config["DEBUG"] == False %}
+
+			div#messages li.category-other,
+			div#messages li.category-debug,
+			div#messages li.category-info {
+				display:none;
+			}
+
+			{% endif %}
+
+
+
 		</style>
 	</head>
 	<body>
+
 		{% if current_user.id %}
 			{% block header %}
 				{% include "header.html" %}
@@ -72,6 +86,7 @@
 
 		{% endblock %}
 		{% include "feedback.html" %}
+		{% include "photomodal.html" %}
 	</body>
 </html>
 

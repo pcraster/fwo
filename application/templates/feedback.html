@@ -11,7 +11,7 @@
         <h4 class="modal-title">Add georeferenced comments or feedback</h4>
       </div>
       <div class="model-map" id="feedback-map" style="height:330px;"></div>
-      <div class="modal-body" style="padding-top:0;padding-bottom:0;">
+      <div class="modal-body" style="padding-top:5px;padding-bottom:0;">
       	<small>The above map view will be shown alongside your comments or feedback.</small>
 		  <div class="form-group" style="margin-top:5px;">
 		    <!--<label for="exampleInputEmail1">Comments or feedback</label>-->
@@ -35,9 +35,9 @@
 		 -->
         <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
         <button type="submit" class="btn btn-primary"><i class="fa fa-comment"></i> Submit</button>
-        <input type="hidden" name="map_state" placeholder="map_state" />
-        <input type="hidden" name="map_view" placeholder="map_view" />
-        <input type="hidden" name="map_marker" placeholder="map_marker" />
+        state:<input type="text" name="map_state" placeholder="map_state" />
+        view:<input type="text" name="map_view" placeholder="map_view" />
+        marker:<input type="text" name="map_marker" placeholder="map_marker" />
       </div>
     </div><!-- /.modal-content -->
 
@@ -89,7 +89,7 @@
 		window.feedbackmap.addLayer(vectorLayer)
 		
 		window.feedbackmap.on('moveend',function(){
-			_mapstate=window.wmsSource.getParams()['LAYERS']
+			_mapstate=window.activeBackgroundLayer+"|"+window.wmsSource.getParams()['LAYERS']
 			$('form#feedback-form input[name="map_state"]').val(_mapstate)
 			$('form#feedback-form input[name="map_center"]').val(window['feedbackmap'].getView().getCenter())
 			_view=window['feedbackmap'].getView()

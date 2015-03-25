@@ -1,0 +1,36 @@
+<div class="modal" id="photo-modal">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+        <h4 class="modal-title">Photo</h4>
+      </div>
+      <div class="modal-body modal-body-photo" style="padding-top:10;padding-bottom:10;">
+        <img src="" id="photo-modal-img" width="100%">
+      </div>
+      <div class="modal-body  modal-body-message" style="padding-top:10;padding-bottom:10;">
+        
+      </div>
+      <div class="modal-footer" style="border-top:none;padding-top:0;">
+        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+      </div>
+    </div><!-- /.modal-content -->
+  </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
+
+
+<script>
+  function photoModal(url) {
+    $('#photo-modal-img').error(function() {
+      $('#photo-modal div.modal-body-photo').hide()
+      $('#photo-modal div.modal-body-message').show()
+      $('#photo-modal div.modal-body-message').html('The file you requested could not be loaded as an image. Perhaps no file with this name was uploaded?')
+      $('#photo-modal').modal('show');
+    }).load(function(){
+      $('#photo-modal div.modal-body-photo').show()
+      $('#photo-modal div.modal-body-message').hide()
+      $('#photo-modal').modal('show');
+    }).attr('src', url);
+    return false;
+  }
+</script>

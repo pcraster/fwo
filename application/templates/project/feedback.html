@@ -28,6 +28,18 @@ ul#comment-replies li {
 {% block footjs %}
 	<script>
 		WMS_URL='/wms/{{wms_key}}';
+
+    BACKGROUND_LAYERS={
+        url: '{{config['MAPSERVER_URL']}}',
+        params: {
+          'LAYERS':'{{project.background_layer_default}}',
+          'TILED': true,
+          'MAP':'{{project.background_layers_mapfile}}',
+          'FORMAT':'image/png; mode=8bit' //image/png; mode=8bit
+        },
+        serverType: 'mapserver'
+      };
+
 	</script>
 	<script type="text/javascript" src="/static/js/ol.js"></script>
 	<script type="text/javascript" src="/static/fieldworkonline.js"></script>
@@ -64,8 +76,12 @@ ul#comment-replies li {
 		$(function() {
 
 			function initialize_commentmap(wmslayers) {
+                var layers=wmslayers.split("|")
+                var layers_background=layers[0]
+                var layers_foreground=layers[1]
+
 				var backgroundLayer=new ol.layer.Tile({
-					visible: true,
+					visible: false,
 					preload: Infinity,
 					source: new ol.source.BingMaps({
 						key: 'ApEqbYdQJSwOJ-KqrCQsI1AAouPQHkng2AjdJsQjLjK55P0yNQc-eEfOLUPUAAMt',
@@ -74,17 +90,24 @@ ul#comment-replies li {
 				});
 				backgroundLayer._fwid="background"
 				var vectorLayer=point_as_layer()
-				console.log("adding wms layer. url: "+WMS_URL+" layers:"+wmslayers)
+				
 				var wmsLayer=new ol.layer.Image({
 					source: new ol.source.ImageWMS({
 						url: WMS_URL,
-						params: { 'LAYERS': wmslayers }
+						params: { 'LAYERS': layers_foreground }
 					})
 				});
 				wmsLayer._fwid="wms"
+
+                window.backgroundLayerWMS=new ol.layer.Tile({
+                    visible:false,
+                    //extent: [-13884991, 2870341, -7455066, 6338219],
+                    source: new ol.source.TileWMS((BACKGROUND_LAYERS))
+                });
+
 				window.commentmap = new ol.Map({
 					target: 'commentmap',
-					layers: [backgroundLayer,vectorLayer,wmsLayer],
+					layers: [backgroundLayer,window.backgroundLayerWMS,vectorLayer,wmsLayer],
 					view: new ol.View({	
 						center: ol.proj.transform([5.721586,44.42], 'EPSG:4326', 'EPSG:3857'),
 						zoom: 11
@@ -96,14 +119,20 @@ ul#comment-replies li {
 			}
 
 			$('a.load-feedback-link').click(function(evt){
+                console.log("click")
 				evt.preventDefault()
 				$('a.load-feedback-link').removeClass("active")
 				var _link=$(this)
 				_link.addClass("active")
 				var _wmslayers=_link.data("map-state")
 				if (!window.hasOwnProperty("commentmap")) {
-					initialize_commentmap(_wmslayers)
+					initialize_commentmap()
 				}
+                var layers=_wmslayers.split("|")
+                var layers_background=layers[0]
+                var layers_foreground=layers[1]
+                console.log("layers_background:"+layers_background)
+                console.log("layers_foreground:"+layers_foreground)
 
 				//update the wms and the marker layers to reflect the comment
 				//where submit was clicked
@@ -218,11 +247,21 @@ ul#comment-replies li {
             list:$('ul#feedback-list'),
             map:{
                 background_layer:new ol.layer.Tile({
-                    visible: true,
+                    visible: false,
                     preload: Infinity,
                     source: new ol.source.BingMaps({key: 'ApEqbYdQJSwOJ-KqrCQsI1AAouPQHkng2AjdJsQjLjK55P0yNQc-eEfOLUPUAAMt', imagerySet: 'Aerial'})
                 }),
-                
+                background_wms_layer:new ol.layer.Tile({
+                    visible:false,
+                    source: new ol.source.TileWMS((BACKGROUND_LAYERS))
+                }),
+                foreground_wms_layer:new ol.layer.Image({
+                    source: new ol.source.ImageWMS({
+                        visible:false,
+                        url: WMS_URL,
+                        params: { 'LAYERS': "" }
+                    })
+                }),
                 obj:new ol.Map({
                     target: 'commentmap',
                     layers: [],
@@ -236,32 +275,61 @@ ul#comment-replies li {
                 }),
                 init:function(){
                     FWO.comments.map.obj.addLayer(FWO.comments.map.background_layer)
+                    FWO.comments.map.obj.addLayer(FWO.comments.map.background_wms_layer)
+                    FWO.comments.map.obj.addLayer(FWO.comments.map.foreground_wms_layer)
                     var marker_layer=point_as_layer()
                     FWO.comments.map.obj.addLayer(marker_layer)
                 },
                 load_comment:function(comment_id) {
                     comment=FWO.comments.get_comment_by_id(comment_id)
+
+                    var map_state=comment.map_state.split("|")
+                    var layers_background=""
+                    var layers_foreground=""
+                    if (map_state.length == 2) {
+                        layers_background=map_state[0]
+                        layers_foreground=map_state[1]
+                    } else {
+                        layers_background=""
+                        layers_foreground=map_state
+                    }
+                    layers_background=layers_background==""?"bing-aerial":layers_background
+
+                    if (layers_background=="bing-aerial") {
+                        FWO.comments.map.background_layer.setVisible(true)
+                        FWO.comments.map.background_wms_layer.setVisible(false)
+                    } else {
+                        FWO.comments.map.background_layer.setVisible(false)
+                        FWO.comments.map.background_wms_layer.setVisible(true)
+                        FWO.comments.map.background_wms_layer.getSource().updateParams({'LAYERS':layers_background})    
+                    }
+                    if (layers_foreground!="") {
+                        FWO.comments.map.foreground_wms_layer.setVisible(true)
+                        FWO.comments.map.foreground_wms_layer.getSource().updateParams({'LAYERS':layers_foreground})
+                    } else {
+                        FWO.comments.map.foreground_wms_layer.setVisible(false)
+                    }
+
                     var _xyz=comment.map_view.split(",")
-				FWO.comments.map.obj.setView(
-					new ol.View({	
-				 		center: [parseFloat(_xyz[0]),parseFloat(_xyz[1])],
-				 		zoom: parseInt(_xyz[2])
-					})
-				);
+    				FWO.comments.map.obj.setView(
+    					new ol.View({	
+    				 		center: [parseFloat(_xyz[0]),parseFloat(_xyz[1])],
+    				 		zoom: parseInt(_xyz[2])
+    					})
+    				);
                     FWO.comments.map.move_marker_to(comment.map_marker)
                 },
                 move_marker_to:function(coord) {
-				FWO.comments.map.obj.getLayers().forEach(function (lyr) {
-					if(lyr.hasOwnProperty("_fwid")) {
-						if(lyr._fwid=="marker") {
-							//this is the marker layer. just remove it, we'll add a new one rght after.
-							FWO.comments.map.obj.removeLayer(lyr)
-						}
-					}
-				});
-				var _xy=coord.split(",")
-				var _newlyr=point_as_layer([parseFloat(_xy[0]),parseFloat(_xy[1])])
-
+				    FWO.comments.map.obj.getLayers().forEach(function (lyr) {
+    					if(lyr.hasOwnProperty("_fwid")) {
+    						if(lyr._fwid=="marker") {
+    							//this is the marker layer. just remove it, we'll add a new one rght after.
+    							FWO.comments.map.obj.removeLayer(lyr)
+    						}
+    					}
+    				});
+				    var _xy=coord.split(",")
+				    var _newlyr=point_as_layer([parseFloat(_xy[0]),parseFloat(_xy[1])])
                     
                     FWO.comments.map.obj.addLayer(_newlyr)
                 }

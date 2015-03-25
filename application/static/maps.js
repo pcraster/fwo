@@ -14,7 +14,7 @@ $(function() {
 
 	$("a.zoom-to-extent").click(function(){
 		extent=$(this).data("zoom-to-extent").split(",").map(parseFloat)
-		console.log(extent)
+		//console.log(extent)
 		window.map.getView().fitExtent(extent, window.map.getSize());
 		return false;
 	})
@@ -111,7 +111,7 @@ $(function() {
 		var viewResolution = (viewTweak*wmsView.getResolution());
 		var url = wmsSource.getGetFeatureInfoUrl(evt.coordinate, viewResolution, 'EPSG:3857',{'INFO_FORMAT': 'application/json'});
 		if(url) {
-			console.log("getFeatureInfo: "+url)
+			//console.log("getFeatureInfo: "+url)
 			$.ajax({url:url}).done(function(data){
 				/* fill the popup with data if the request to url completes. */
 				$('#attribute-values').html("")
