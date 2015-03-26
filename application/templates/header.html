@@ -15,18 +15,38 @@
 
     <!-- Collect the nav links, forms, and other content for toggling -->
     <!--<div class="collapse navbar-collapse">-->
+
+  <form class="navbar-form navbar-left" role="form">
+  {% if current_user and project %}
+    {% if current_user.is_supervisor or current_user.is_admin %}
+   <a href="/projects/{{project.slug}}/" type="submit" class="btn btn-default" style="border-color:#444;background-color:#222;color:#fff;"><i class="fa fa-home"></i> <strong>Home</strong></a>
+    {% else %}
+    <a href="/projects/{{project.slug}}/" type="submit" class="btn btn-default" style="border-color:#444;background-color:#222;color:#fff;"><i class="fa fa-home"></i> <strong>Home</strong></a>
+    {% endif %}
+   {% elif current_user and project %}
+   <a href="/projects/{{project.slug}}/" type="submit" class="btn btn-default" style="border-color:#444;background-color:#222;color:#fff;"><i class="fa fa-home"></i> <strong>Home</strong></a>
+  {% else %}
+    <a href="/" type="submit" class="btn btn-default" style="border-color:#444;background-color:#222;color:#fff;"><i class="fa fa-home"></i> <strong>Home</strong></a>
+  {% endif %} 
+
+  </form>
+
       <ul class="nav navbar-nav navbar-left">
-
-
         <!--<li class="active"><a href="/"><i class="fa fa-flag"></i> <strong>Fieldwork France 2014</strong> <i class="fa fa-angle-right"></i> Group A</a></li>-->
         <!--<li class="active"><a href="/"><i class="fa fa-home"></i> Home</a> </li>-->
         {% if current_user and project and user %}
+        <!--
           <li class="active"><a href="/projects/{{project.slug}}/"><i class="fa fa-home"></i> Home &nbsp;<i class="fa fa-angle-right"></i>&nbsp; {{project.name}} &nbsp;<i class="fa fa-angle-right"></i>&nbsp; <strong>{{user.username}}</strong></a></li>
-
+        -->
         {% elif current_user and project %}
+        <!--
           <li class="active"><a href="/projects/{{project.slug}}/"><i class="fa fa-home"></i> Home &nbsp;<i class="fa fa-angle-right"></i>&nbsp; {{project.name}}</a></li>
+
+        -->
         {% else %}
+        <!--
           <li class="active"><a href="/"><i class="fa fa-home"></i> Home</a> </li>
+        -->
         {% endif %}        
         {% if current_user.id and project and user %}
 	        <li><a href="/projects/{{project.slug}}/{{user.id}}/data"><i class="fa fa-database"></i> Data</a></li>
@@ -45,7 +65,7 @@
 
   <form class="navbar-form navbar-right" role="form">
   {% if current_user.is_admin %}
-  <a href="/admin" type="submit" class="btn btn-default" style="border-color:#444;background-color:#222;color:#ddd;"><i class="fa fa-wrench"></i> Admin</a>
+  <a href="/admin" type="submit" class="btn btn-default" style="border-color:#444;background-color:#222;color:#ddd;"><i class="fa fa-wrench"></i> Settings</a>
   {% endif %}
   <a href="/settings" type="submit" class="btn btn-default" style="border-color:#444;background-color:#222;color:#ddd;"><i class="fa fa-user"></i> My Account</a>
    <a href="/user/logout" type="submit" class="btn btn-default" style="border-color:#444;background-color:#222;color:#ddd;"><i class="fa fa-times"></i> Log out</a>

@@ -7,7 +7,7 @@
 -->
 <div class="panel panel-default" style="margin-top:15px;">
 	<div class="panel-heading">
-		<strong>Upload new files (spreadsheets, attachments)</strong>
+		<strong><i class="fa fa-plus"></i> Upload Files (spreadsheets with observations, photos, documents)</strong>
 	</div>
 	<div class="panel-body">
 	{% if current_user.id != user.id %}
@@ -27,7 +27,7 @@
 			<div class="form-group">
 				<input type="file" name="uploadfile">
 			</div>
-			<button type="submit" class="btn btn-primary btn-sm">Upload file <i class="fa fa-long-arrow-right"></i></button>
+			<button type="submit" class="btn btn-primary btn-sm"><i class="fa fa-check"></i> Upload file</button>
 		</form>
 	{%endif%}
 	</div>

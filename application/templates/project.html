@@ -16,9 +16,11 @@
 	<div class="row">
 		<div class="col-md-12 col-sm-12">
 
-			<div class="panel panel-default">
+
+
+<div class="panel panel-default">
 				<div class="panel-heading">
-					<strong>Participants</strong>
+					<strong><i class="fa fa-users"></i> Enrolled students</strong>
 				</div>
 				{% if project.enrolled_users == 0 %}
 					<div class="panel-body">
@@ -37,10 +39,10 @@
 					<div class="panel-body" style="padding:0;">
 						<table class="table table-condensed">
 						<thead>
-						<tr><th>Username</th><th>Full name</th><th>E-mail</th><th>Details</th></tr>
+						<tr><th>Username</th><th></th><th>E-mail</th><th>Details</th></tr>
 						</thead>
 						<tbody>
-						{% for user in users %}
+						{% for user in students %}
 						<tr>
 							<td>
 								<code>
@@ -51,7 +53,99 @@
 								</code>
 							</td>
 							<td>
-								{{user.fullname}}
+								<!--{{user.fullname}}-->
+									{% if user.is_supervisor or user.is_admin %}
+										<i data-original-title="This user is a supervisor or administrator" data-toggle="tooltip" title="" class="fa fa-graduation-cap"></i>
+									{% endif %}
+							</td>
+							<td>
+								{{user.email}}
+							</td>
+							<td>
+							{% for membership in user.memberships %}
+								{% if membership.campaign_id == project.id %}
+								Last data upload: <code>{{membership.text_lastactivity}}</code><br/>
+								{% endif %}
+								<!--
+								{% if membership.campaign_id == project.id %}
+								Web services: <code><i class="fa fa-share-alt"></i> {{membership.wms_url}}</code>
+								{% endif %}
+								-->
+							{% endfor %}
+							</td>
+
+							<td style="text-align:right;">
+
+								{% for membership in user.memberships %}
+									{% if membership.campaign_id == project.id and current_user.is_admin %}
+										{% if project.time_basemap > membership.time_basemap %}
+											<a class="btn btn-success btn-sm" href="/projects/{{project.slug}}/?action=reload&amp;user_id={{user.id}}" >
+											<i class="fa fa-refresh  fa-fw"></i> Update basemap</a> 
+										{% else %}
+											<a class="btn btn-default btn-sm" href="/projects/{{project.slug}}/?action=reload&amp;user_id={{user.id}}">
+											<i class="fa fa-check fa-fw"></i> Update basemap</a> 
+										{% endif %}
+
+									{% endif %}
+								{% endfor %}
+								
+								<a class="btn btn-primary btn-sm" href="/projects/{{project.slug}}/{{user.id}}/maps"><i class="fa fa-search"></i> View workspace</a>
+							
+							</td>
+						</tr>
+						{% endfor %}
+						</tbody>
+						</table>
+					</div>
+				{% endif %}
+			</div>
+
+
+
+
+
+
+
+
+
+
+
+			<div class="panel panel-default">
+				<div class="panel-heading">
+					<strong><i data-original-title="This user is a supervisor or administrator" data-toggle="tooltip" title="" class="fa fa-graduation-cap"></i> Supervisors and administrators</strong>
+				</div>
+				{% if project.enrolled_users == 0 %}
+					<div class="panel-body">
+						<p>
+						There are no users enrolled in this fieldwork project at this time. You can add them
+						manually on this page, or give them the invitation code <code>{{project.invite_key}}</code>
+						for this project. This code allows students to enroll themselves in the project.
+						</p>
+					</div>
+				{% else %}
+					<div class="panel-body">
+						<p>
+						The following users are enrolled in this fieldwork project:
+						</p>
+					</div>
+					<div class="panel-body" style="padding:0;">
+						<table class="table table-condensed">
+						<thead>
+						<tr><th>Username</th><th></th><th>E-mail</th><th>Details</th></tr>
+						</thead>
+						<tbody>
+						{% for user in supervisors %}
+						<tr>
+							<td>
+								<code>
+									{% if user.id == current_user.id %}
+									<i class="fa fa-user"></i>	
+									{% endif %}
+									{{user.username}}
+								</code>
+							</td>
+							<td>
+								<!--{{user.fullname}}-->
 									{% if user.is_supervisor or user.is_admin %}
 										<i data-original-title="This user is a supervisor or administrator" data-toggle="tooltip" title="" class="fa fa-graduation-cap"></i>
 									{% endif %}
@@ -100,7 +194,7 @@
 
 			<div class="panel panel-default">
 				<div class="panel-heading">
-					<strong>Enroll new users</strong> <!--<a href="#" class="pull-right">View Project Basemap</a>-->
+					<strong><i class="fa fa-plus"></i> Enroll new users</strong> <!--<a href="#" class="pull-right">View Project Basemap</a>-->
 				</div>
 				<div class="panel-body">
 				<p>
@@ -151,7 +245,7 @@
 
 			<div class="panel panel-default">
 					<div class="panel-heading">
-						<strong>Upload project basemap (zip) or background layers (tif)</strong>
+						<strong><i class="fa fa-plus"></i> Upload project basemap (zip) or background layers (tif)</strong>
 					</div>
 					{% if current_user.is_admin %}
 						<div class="panel-body">

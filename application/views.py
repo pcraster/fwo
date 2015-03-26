@@ -187,9 +187,16 @@ def project(slug=None):
                 project.enroll_user(request.args.get("user_id",""))
 
         users=User.query.filter(User.campaigns.contains(project)).all()
+        
+        student=Role.query.filter(Role.name=='student').first()
+        
+        #students=User.query.filter(User.roles.contains(student)).all()
+        students=User.query.filter(User.campaigns.contains(project)).filter(User.roles.contains(student)).all()
+        supervisors=User.query.filter(User.campaigns.contains(project)).filter(~User.roles.contains(student)).all()
+        
         enrollable_users=User.query.filter(~User.campaigns.contains(project)).all()
         backgroundlayers=BackgroundLayer.query.filter_by(campaign_id=project.id).all()
-        return render_template("project.html",project=project,users=users,enrollable_users=enrollable_users,backgroundlayers=backgroundlayers)
+        return render_template("project.html",project=project,supervisors=supervisors,students=students,enrollable_users=enrollable_users,backgroundlayers=backgroundlayers)
     else:
         #
         #Else forward the user to the user's fieldwork homepage
