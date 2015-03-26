@@ -67,7 +67,7 @@
 	<div class="panel-heading">
 		<strong>Overview of uploaded files</strong>
 	</div>
-	{% if not attachments %}
+	{% if attachments|length==0 %}
 		<div class="panel-body">
 		<p>No attachments have been uploaded yet.</p>
 		</div>

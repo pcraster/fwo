@@ -45,7 +45,7 @@
 						{% for user in students %}
 						<tr>
 							<td>
-								<code>
+								<code {% if user.id == current_user.id %}style="border:1px solid #C7254E;"{% endif %}>
 									{% if user.id == current_user.id %}
 									<i class="fa fa-user"></i>	
 									{% endif %}
@@ -131,8 +131,9 @@
 						<tbody>
 						{% for user in supervisors %}
 						<tr>
+
 							<td>
-								<code>
+								<code {% if user.id == current_user.id %}style="border:1px solid #C7254E;"{% endif %}>
 									{% if user.id == current_user.id %}
 									<i class="fa fa-user"></i>	
 									{% endif %}

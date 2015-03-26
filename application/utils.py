@@ -154,7 +154,7 @@ def excel_parser(filename,spatialite_file):
 						'datatype':None,
 						'datavalues':[]
 					})
-					flash("Found header %s with info %s"%(cleaned_header,additional_info),"info")
+					flash("Found header %s with info %s"%(cleaned_header,additional_info),"debug")
 					#if this header matches the regexp for defining the lat and lon
 					#colums, set the col_ix_lat or col_ix_lon variable which defines
 					#which column (i.e. item in header_list) is used for trying to
@@ -176,8 +176,8 @@ def excel_parser(filename,spatialite_file):
 		if col_ix_lon==None or col_ix_lat==None:
 			flash("Loaded sheet <code>%s</code> but could not find any valid latitude/longitude columns."%(sheetname),"error")
 		else:
-			flash("Loaded sheet <code>%s</code> and found latitude and longitude headers in columns <code>%i</code> and <code>%i</code>."%(sheetname,col_ix_lat,col_ix_lon),"info")
-			flash("Found %i headers that look good and will be turned into attributes of the data point. They are: %s"%(len(good_headers),"<code>"+"</code>, <code>".join(good_headers)+"</code>"),"info")
+			flash("Loaded sheet <code>%s</code> and found latitude and longitude headers in columns <code>%i</code> and <code>%i</code>."%(sheetname,col_ix_lat,col_ix_lon),"debug")
+			flash("Found %i headers that look good and will be turned into attributes of the data point. They are: %s"%(len(good_headers),"<code>"+"</code>, <code>".join(good_headers)+"</code>"),"debug")
 			for h in bad_headers:
 				flash("The header/attribute in column <code>%i</code> with value <code>%s</code> &nbsp;was ignored because it was empty, contained only strange characters, or was the same as another column header!"%(h["column_index"],h["cleaned_header"]),"debug")
 			for ix,h in enumerate(header_list):

@@ -329,11 +329,11 @@ class Campaign(db.Model):
                         cu.time_basemapversion=db.func.now()
                         db.session.commit()
                         flash("Reloaded basemap data for user <code>%s</code>"%(user.username),"ok")
-                        flash("Command: <code>%s</code>"%(" ".join(cmd)))
+                        flash("Command: <code>%s</code>"%(" ".join(cmd)),"debug")
                     else:
                         flash("Failed to reload basemap data for user <code>%s</code>. The map update script returned status code <code>%d</code>."%(user.username,returncode),"error")
-                        flash("Command: <code>%s</code>"%(" ".join(cmd)))
-                        flash("Script output: <code>%s</code>"%(streamdata),"error")
+                        flash("Command: <code>%s</code>"%(" ".join(cmd)),"debug")
+                        flash("Script output: <code>%s</code>"%(streamdata),"debug")
                 except Exception as e:
                     flash("Failed to reload basemap data for user <code>%s</code>. An exception occurred while trying to run the map update script. Hint: %s"%(user.username,e),"error")
             return True
@@ -422,6 +422,7 @@ class Campaign(db.Model):
         """
         Returns a list of attachments that the specified user has uploaded to this project. Use sorted(glob.glob(...), key=os.path.getmtime) to sort by modification time instead.
         """
+        file_list=[]
         files=sorted(glob.glob(os.path.join(self.userdata(user_id),"attachments")+"/*.*"))
         for f in files:
             try:
@@ -431,14 +432,15 @@ class Campaign(db.Model):
                 elif extension.endswith((".xls",".xlsx")): filetype="spreadsheet" 
                 elif extension.endswith((".doc",".docx",".pdf",".txt")): filetype="document"
                 else: filetype="other"
-                yield {
+                file_list.append({
                     'name':tail,
                     'type':filetype,
                     'extension':extension,
                     'size':os.path.getsize(f)
-                }
+                })
             except Exception as e:
                 pass
+        return file_list
 
 def generate_wms_key():
     random.seed()

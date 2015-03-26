@@ -3,29 +3,27 @@
 	<div id="messages" class="container-fluid" style="padding-top:17px;background-color:#F5F5F5;border-bottom:1px solid #ddd;">
 		<ul class="list-group">
 		{% for category,message in messages %}
-			
-				{% if category == "error" %}
-					<li class="list-group-item category-{{category}}">
-						<span style="color:red"><i class="fa fa-times-circle"></i> {{message|safe}}</span>
-					</li>
-				{% elif category == "info" %}
-					<li class="list-group-item category-{{category}}">
-						<span style="color:darkblue"><i class="fa fa-info-circle"></i></span> {{message|safe}}
-					</li>
-				{% elif category == "ok" %}
-					<li class="list-group-item category-{{category}}">
-						<span style="color:green"><i class="fa fa-check-circle"></i></span> {{message|safe}}
-					</li>
-				{% elif category == "debug" %}
-					<li class="list-group-item category-{{category}}">
-						<span style="color:orange"><i class="fa fa-minus-circle"></i></span> {{message|safe}}
-					</li>
-				{% else %}
-					<li class="list-group-item category-other">
-						<span style="color:darkblue"><i class="fa fa-info-circle"></i></span> {{message|safe}}
-					</li>
-				{% endif %}
-			</li>
+			{% if category == "error" %}
+				<li class="list-group-item category-{{category}}">
+					<span style="color:red"><i class="fa fa-times-circle"></i> {{message|safe}}</span>
+				</li>
+			{% elif category == "info" %}
+				<li class="list-group-item category-{{category}}">
+					<span style="color:darkblue"><i class="fa fa-info-circle"></i></span> {{message|safe}}
+				</li>
+			{% elif category == "ok" %}
+				<li class="list-group-item category-{{category}}">
+					<span style="color:green"><i class="fa fa-check-circle"></i></span> {{message|safe}}
+				</li>
+			{% elif category == "debug" %}
+				<li class="list-group-item category-{{category}}">
+					<span style="color:orange"><i class="fa fa-minus-circle"></i></span> {{message|safe}}
+				</li>
+			{% else %}
+				<li class="list-group-item category-other">
+					<span style="color:darkblue"><i class="fa fa-info-circle"></i></span> {{message|safe}}
+				</li>
+			{% endif %}
 		{% endfor %}
     	</ul>
     </div>
