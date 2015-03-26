@@ -22,12 +22,12 @@
 				<div class="panel-heading">
 					<strong><i class="fa fa-users"></i> Enrolled students</strong>
 				</div>
-				{% if project.enrolled_users == 0 %}
+				{% if students|length == 0 %}
 					<div class="panel-body">
 						<p>
 						There are no users enrolled in this fieldwork project at this time. You can add them
 						manually on this page, or give them the invitation code <code>{{project.invite_key}}</code>
-						for this project. This code allows students to enroll themselves in the project.
+						for this project. This code allows users to enroll themselves in a project.
 						</p>
 					</div>
 				{% else %}
@@ -39,7 +39,7 @@
 					<div class="panel-body" style="padding:0;">
 						<table class="table table-condensed">
 						<thead>
-						<tr><th>Username</th><th></th><th>E-mail</th><th>Details</th></tr>
+						<tr><th style="width:20%">Username</th><th style="width:25%">E-mail</th><th>Details</th></tr>
 						</thead>
 						<tbody>
 						{% for user in students %}
@@ -52,12 +52,7 @@
 									{{user.username}}
 								</code>
 							</td>
-							<td>
-								<!--{{user.fullname}}-->
-									{% if user.is_supervisor or user.is_admin %}
-										<i data-original-title="This user is a supervisor or administrator" data-toggle="tooltip" title="" class="fa fa-graduation-cap"></i>
-									{% endif %}
-							</td>
+
 							<td>
 								{{user.email}}
 							</td>
@@ -114,12 +109,12 @@
 				<div class="panel-heading">
 					<strong><i data-original-title="This user is a supervisor or administrator" data-toggle="tooltip" title="" class="fa fa-graduation-cap"></i> Supervisors and administrators</strong>
 				</div>
-				{% if project.enrolled_users == 0 %}
+				{% if supervisors|length == 0 %}
 					<div class="panel-body">
 						<p>
-						There are no users enrolled in this fieldwork project at this time. You can add them
+						There are no supervisors or administrators enrolled in this fieldwork project at this time. You can add them
 						manually on this page, or give them the invitation code <code>{{project.invite_key}}</code>
-						for this project. This code allows students to enroll themselves in the project.
+						for this project. This code allows users to enroll themselves in a project.
 						</p>
 					</div>
 				{% else %}
@@ -131,7 +126,7 @@
 					<div class="panel-body" style="padding:0;">
 						<table class="table table-condensed">
 						<thead>
-						<tr><th>Username</th><th></th><th>E-mail</th><th>Details</th></tr>
+						<tr><th style="width:20%">Username</th><th style="width:25%">E-mail</th><th>Details</th></tr>
 						</thead>
 						<tbody>
 						{% for user in supervisors %}
@@ -143,12 +138,6 @@
 									{% endif %}
 									{{user.username}}
 								</code>
-							</td>
-							<td>
-								<!--{{user.fullname}}-->
-									{% if user.is_supervisor or user.is_admin %}
-										<i data-original-title="This user is a supervisor or administrator" data-toggle="tooltip" title="" class="fa fa-graduation-cap"></i>
-									{% endif %}
 							</td>
 							<td>
 								{{user.email}}

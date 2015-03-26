@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block content %}
-<h2 style="text-align:center;">Fieldwork Online: User Settings</h2>
+<!--<h2 style="text-align:center;">Fieldwork Online: User Settings</h2>-->
 
 
 <div class="panel panel-default" style="margin-top:15px;">
@@ -13,12 +13,12 @@
 	<div class="panel-body" style="margin:0px;padding:0px">
 		<table class="table">
 		<tbody>
-		<tr><td><strong>Username</strong></td><td>{{current_user.username}}</td><td><strong>Roles</strong></td><td>
+		<tr><td><strong>Username</strong></td><td><code>{{current_user.username}}</code></td><td><strong>Roles</strong></td><td>
 		{% for role in current_user.role_list %}
-		{{role}} 
+		<code>{{role}}</code>
 		{% endfor %}</td></tr>
 		<tr><td><strong>E-mail</strong></td><td>{{current_user.email}}</td><td><strong>Full name</strong></td><td>{{current_user.fullname}}</td></tr>
-		<tr><td><strong>Current project</strong></td><td>{{current_user.current_project}}</td><td></td></tr>
+		<!--<tr><td><strong>Current project</strong></td><td>{{current_user.current_project.id}}</td><td></td></tr>-->
 		</tbody>
 		</table>
 	</div>

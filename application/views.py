@@ -188,11 +188,16 @@ def project(slug=None):
 
         users=User.query.filter(User.campaigns.contains(project)).all()
         
-        student=Role.query.filter(Role.name=='student').first()
+        role_student=Role.query.filter(Role.name=='student').first()
+        role_supervisor=Role.query.filter(Role.name=='supervisor').first()
+        role_admin=Role.query.filter(Role.name=='administrator').first()
+        
+        print role_admin
         
         #students=User.query.filter(User.roles.contains(student)).all()
-        students=User.query.filter(User.campaigns.contains(project)).filter(User.roles.contains(student)).all()
-        supervisors=User.query.filter(User.campaigns.contains(project)).filter(~User.roles.contains(student)).all()
+        #.filter(~User.roles.contains(role_supervisor))
+        students=User.query.filter(User.campaigns.contains(project)).filter(~User.roles.contains(role_supervisor)).filter(~User.roles.contains(role_admin)).all()
+        supervisors=User.query.filter(User.campaigns.contains(project)).filter(User.roles.contains(role_supervisor)|User.roles.contains(role_admin)).all()
         
         enrollable_users=User.query.filter(~User.campaigns.contains(project)).all()
         backgroundlayers=BackgroundLayer.query.filter_by(campaign_id=project.id).all()
