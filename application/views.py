@@ -186,13 +186,13 @@ def project(slug=None):
             if request.args.get("action","")=="enroll" and request.args.get("user_id","") != "":
                 project.enroll_user(request.args.get("user_id",""))
 
-        users=User.query.filter(User.campaigns.contains(project)).all()
+        #users=User.query.filter(User.campaigns.contains(project)).all()
         
-        role_student=Role.query.filter(Role.name=='student').first()
+        #role_student=Role.query.filter(Role.name=='student').first()
         role_supervisor=Role.query.filter(Role.name=='supervisor').first()
         role_admin=Role.query.filter(Role.name=='administrator').first()
         
-        print role_admin
+        #print role_admin
         
         #students=User.query.filter(User.roles.contains(student)).all()
         #.filter(~User.roles.contains(role_supervisor))
@@ -308,13 +308,13 @@ def project_feedback_json(slug,user_id):
                 replies.append({
                     'reply_by':reply.comment_by_user.username,
                     'comment_age':reply.comment_age,
-                    'comment_body':reply.comment_body
+                    'comment_body':escape(reply.comment_body)
                 })
             f.append({
                 'id':comment.id,
                 'comment_by':comment.comment_by_user.username,
                 'comment_age':comment.comment_age,
-                'comment_body':comment.comment_body,
+                'comment_body':escape(comment.comment_body),
                 'map_state':comment.map_state,
                 'map_view':comment.map_view,
                 'map_marker':comment.map_marker,
@@ -361,13 +361,16 @@ def project_file(slug,user_id):
                 f.save(upload_file)
                 if f.filename.endswith((".xls",".xlsx")):
                     spatialite_file=project.features_database(user_id)
-                    excel_parser(upload_file,spatialite_file)
+                    rc=excel_parser(upload_file,spatialite_file)
+
+                if rc==False:
+                    flash("An error occurred while trying to parse the uploaded Excel sheet. Please recheck your file and try again.","error")
+                else:
                     project.basemap_update(user_id)
                     cu.update_lastactivity()
-
-                flash("Upload and processing of file <code>%s</code> completed."%(f.filename),"ok")
+                    flash("Upload and processing of file <code>%s</code> completed."%(f.filename),"ok")
         except Exception as e:
-            flash("An error occurred during the upload. Hint: %s"%(e),"error")
+            flash("An unexpected error occurred during the upload. Hint: %s"%(e),"error")
     return redirect(url_for('project_data',slug=slug,user_id=user_id))
 
 @app.route("/projects/<slug>/<user_id>/enroll")

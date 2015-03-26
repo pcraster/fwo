@@ -9,7 +9,7 @@ import datetime
 import zipfile 
 import xmltodict
 
-from flask import Flask, render_template, request, redirect, abort, flash, send_file, send_from_directory, url_for, make_response, Response, jsonify
+from flask import Flask, render_template, request, redirect, abort, flash, send_file, send_from_directory, url_for, make_response, Response, jsonify, escape
 
 from flask.ext.user import UserManager, UserMixin, SQLAlchemyAdapter
 from flask.ext.user import current_user, login_required, roles_required, UserMixin

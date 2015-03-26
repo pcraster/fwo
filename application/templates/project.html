@@ -25,7 +25,7 @@
 				{% if students|length == 0 %}
 					<div class="panel-body">
 						<p>
-						There are no users enrolled in this fieldwork project at this time. You can add them
+						There are no students enrolled in this fieldwork project at this time. You can add them
 						manually on this page, or give them the invitation code <code>{{project.invite_key}}</code>
 						for this project. This code allows users to enroll themselves in a project.
 						</p>
@@ -33,7 +33,7 @@
 				{% else %}
 					<div class="panel-body">
 						<p>
-						The following users are enrolled in this fieldwork project:
+						The following students are enrolled in this fieldwork project:
 						</p>
 					</div>
 					<div class="panel-body" style="padding:0;">
@@ -120,7 +120,7 @@
 				{% else %}
 					<div class="panel-body">
 						<p>
-						The following users are enrolled in this fieldwork project:
+						The following supervisors and administrators are enrolled in this fieldwork project:
 						</p>
 					</div>
 					<div class="panel-body" style="padding:0;">
@@ -171,7 +171,11 @@
 									{% endif %}
 								{% endfor %}
 								
+								{% if user.id == current_user.id %}
 								<a class="btn btn-primary btn-sm" href="/projects/{{project.slug}}/{{user.id}}/maps"><i class="fa fa-search"></i> View workspace</a>
+								{% else %}
+								<a class="btn btn-default btn-sm" href="/projects/{{project.slug}}/{{user.id}}/maps"><i class="fa fa-search"></i> View workspace</a>
+								{% endif %}
 							
 							</td>
 						</tr>
