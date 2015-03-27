@@ -27,6 +27,19 @@
   <script type="text/javascript" src="/static/fieldworkonline.js"></script>
   <script type="text/javascript" src="/static/maps.js"></script>
   <script type="text/javascript">
+    var entityMap = {
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': '&quot;',
+      "'": '&#39;',
+      "/": '&#x2F;'
+    }
+    function escapeHtml(string) {
+      return String(string).replace(/[&<>"'\/]/g, function (s) {
+        return entityMap[s];
+      });
+    }
     function arrayWrap(obj,property) {
       /*
       Returns properties of an object wrapped in an array so they can 
@@ -243,9 +256,11 @@
       })
       if(filename_html=='') {
         if(value.length>length_max) {
-          return "<p>"+value+"</p>"
+            value=""+value
+            return "<p>"+escapeHtml(value)+"</p>"
         } else {
-          return "<code>"+value+"</code>"
+          value=""+value
+          return "<code>"+escapeHtml(value)+"</code>"
         }
       } else {
         return filename_html
