@@ -206,7 +206,7 @@ def project(slug=None):
         #
         #Else forward the user to the user's fieldwork homepage
         #
-        return redirect(url_for('project_overview',slug=project.slug,user_id=current_user.id))
+        return redirect(url_for('project_maps',slug=project.slug,user_id=current_user.id))
 
 
 #

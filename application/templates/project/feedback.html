@@ -239,11 +239,11 @@ ul#comment-replies li {
                     replies.append('<li class="list-group-item" style="border:none;padding-left:0px;"><strong><i class="fa fa-reply fa-rotate-180 fa-fw"></i> Reply by '+reply.reply_by+'</strong> posted '+reply.comment_age+'<p class="reply-body">'+reply.comment_body+'</p></li>')
                 }
                 FWO.comments.map.load_comment(comment_id)
-                return true
+                return true;
             },
-            post_reply(comment_id,reply) {
-                
-            },
+            // post_reply(comment_id,reply) {
+            //
+            // },
             list:$('ul#feedback-list'),
             map:{
                 background_layer:new ol.layer.Tile({

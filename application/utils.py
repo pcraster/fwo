@@ -23,6 +23,7 @@ def attribute_type_predictor(attribute_vals):
         if val_str!='':
             #if the string repr is not empty, determine the type and add it to the type counts for this columns
             val_type=type(val).__name__
+            flash('val_type=%s'%(val_type),'debug')
             #if your spreadsheet contains values like '10' python will think it's a float, even though we really prefer to store it as an integer. therefore, lets test if this float is really a float or just pretending to be..
             if val_type=='float':
                 if val.is_integer():
@@ -31,6 +32,14 @@ def attribute_type_predictor(attribute_vals):
                     val_type='REAL'
             if val_type=='unicode' or val_type=='str':
                 val_type="TEXT"
+                try:
+                    v=float(val)
+                    if type(v).__name__=='float':
+                        val_type='REAL'
+                    else:
+                        val_type='TEXT'
+                except Exception as e:
+                    val_type='TEXT'
             try: type_counts[val_type]+=1
             except KeyError as e: type_counts[val_type]=1 #key doesn't exist, add the first one
     for t in type_counts:
@@ -104,16 +113,23 @@ def excel_parser(filename,spatialite_file):
         return False
 
     for i,sheetname in enumerate(sheets):
+
         flash("Loading sheet %d: <code>%s</code>"%(i,sheetname),"debug")
+        
+        sheet=book.sheet_by_index(i)
+        
         try:
-            sheet=book.sheet_by_index(i)
             header_vals=sheet.row_values(0)
-            lat_regex='^lat$|^lats$|^latitude|^y$|^ycoordinate$'
-            lon_regex='^lon$|^lons$|^lngs$|^lng$|^longitude|^longtitude|^x$|^xcoordinate$'
-            epsg=4326
-            col_ix_lat=col_ix_lon=None
         except Exception as e:
-            flash("Could not load sheet <code>%s</code>! Hint: %s"%(sheetname,e),"error")
+            #flash("Could not load sheet <code>%s</code>!"%(sheetname),"error")
+            #flash("Could not load sheet <code>%s</code>! Hint: %s"%(sheetname,e),"debug")
+            header_vals=[]        
+
+        lat_regex='^lat$|^lats$|^latitude|^y$|^ycoordinate$'
+        lon_regex='^lon$|^lons$|^lngs$|^lng$|^longitude|^longtitude|^x$|^xcoordinate$'
+        epsg=4326
+        col_ix_lat=col_ix_lon=None
+
 
         #first sort out the headers by identifying a list of valid headers, as well as which headers and columns contain the coordinate information for the point.
         good_headers=[]
