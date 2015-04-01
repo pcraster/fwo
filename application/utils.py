@@ -6,6 +6,10 @@ from pyspatialite import dbapi2 as db
 
 from flask import flash
 
+def flash(message,category):
+    pass
+    return True
+
 def attribute_type_predictor(attribute_vals):
     """
     Pass a list of values and this function will predict what spatialite data type best matches the non-empty values in the list. The possible data types match those of an sqlite database.
@@ -79,10 +83,12 @@ def attribute_uniques(attribute_vals):
     """
     return len(set([v for v in attribute_vals if v != None]))
 
+
 def excel_parser(filename,spatialite_file):
     #load the spatialite database where the points will be saved...
     tablenames=["fwo_metadata"]
     messages=[]
+    conclusions=[]
     try:
         conn = db.connect(spatialite_file)
         cur = conn.cursor()
@@ -103,14 +109,14 @@ def excel_parser(filename,spatialite_file):
         flash("Loaded file <code>%s</code>"%(filename),"debug")
     except Exception as e:
         flash("Could not open or create metadata tables in sqlite file <code>%s</code>. Hint: %s"%(spatialite_file,e),"error")
-        return False
+        return (False,"Could not open or create metadata tables in sqlite file <code>%s</code>. Hint: %s"%(spatialite_file,e))
     try:
         book=xlrd.open_workbook(filename)
         sheets=book.sheet_names()
         flash("Found %i sheet(s): %s"%(len(sheets),"<code>"+"</code>,<code>".join(sheets)+"</code>"),"debug")
     except Exception as e:
         flash("Could not open the workbook <code>%s</code> with Python's xlrd module! Hint: %s"%(filename,e),"error")
-        return False
+        return (False,"Could not open the workbook <code>%s</code> with Python's xlrd module! Hint: %s"%(filename,e))
 
     for i,sheetname in enumerate(sheets):
 
@@ -141,7 +147,7 @@ def excel_parser(filename,spatialite_file):
                 test=str(h)
             except Exception as e:
                 flash("The header cell <code>%s</code> contained strange characters! Make sure headers only contain only ASCII characters."%(h),"error")
-                return False
+                return (False,"The header cell <code>%s</code> contained strange characters! Make sure headers only contain only ASCII characters."%(h))
 
         for col_ix,header in enumerate(map(str,header_vals)):
             flash("Parsing header %d"%(col_ix),"debug")
@@ -199,10 +205,11 @@ def excel_parser(filename,spatialite_file):
                     })
 
             except Exception as e:
-                flash("Wow you managed to break the script in some other novel way. Well done! It choked trying to parse header column <code>%i</code> in sheet <code>%s</code>. Extra hint: %s"%(col_ix,sheetname,e),"error")
+                return(False,"An unexpected error occurred while trying to parse header column <code>%i</code> in sheet <code>%s</code>. Extra hint: %s"%(col_ix,sheetname,e))
 
         if col_ix_lon==None or col_ix_lat==None:
             flash("Loaded sheet <code>%s</code> but could not find any valid latitude/longitude columns."%(sheetname),"error")
+            conclusions.append("Warning: could not find any valid coordinates in sheet \"%s\""%(sheetname))
         else:
             flash("Loaded sheet <code>%s</code> and found latitude and longitude headers in columns <code>%i</code> and <code>%i</code>."%(sheetname,col_ix_lat,col_ix_lon),"debug")
             flash("Found %i headers that look good and will be turned into attributes of the data point. They are: %s"%(len(good_headers),"<code>"+"</code>, <code>".join(good_headers)+"</code>"),"debug")
@@ -269,4 +276,10 @@ def excel_parser(filename,spatialite_file):
             UPDATE fwo_metadata SET features=%s,description='%s' WHERE name='%s';
             """%(num_points,description,tablename))
             conn.commit()
-    return True
+            
+            if num_points > 0:
+                conclusions.append("Found %d points in sheet \"%s\"."%(num_points,sheetname))
+            else:
+                conclusions.append("Warning: Could not find any valid points in sheet \"%s\""%(sheetname))
+            
+    return (True," ".join(conclusions))

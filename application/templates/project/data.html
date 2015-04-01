@@ -1,4 +1,7 @@
 {% extends "base.html" %}
+{% block headjs %}
+	<script src="/static/lib/plupload/plupload.full.min.js"></script>
+{% endblock %}
 {% block content %}
 <!--
 <div class="well"  style="margin-top:15px;">
@@ -7,28 +10,42 @@
 -->
 <div class="panel panel-default" style="margin-top:15px;">
 	<div class="panel-heading">
-		<strong><i class="fa fa-plus"></i> Upload Files (spreadsheets with observations, photos, documents)</strong>
+		<strong><i class="fa fa-plus"></i> Upload Spreadsheets, Photos, Documents</strong>
 	</div>
 	<div class="panel-body">
+
+
 	{% if current_user.id != user.id %}
 		<p>
 		It is not possible (even for administrators or supervisors) to upload data to another user's workspace.
 		</p>
 	{% else %}
 		<p>
-			Please keep the following in mind when uploading spreadsheets:
+			Please keep the following in mind when uploading files:
 			<ul>
-				<li>Uploaded data is overwritten, not appended to!</li>
-				<li>The name of the sheet is used to identify the feature layer, make sure it's unique and has a clear name.</li>
-				<li>Ensure that any spreadsheet has header information (column or attribute names) on the first row, and that any rows below that are features.</li>
+				<li>Uploaded files and data are always overwritten, not appended to or updated.</li>
+				<li>You can upload multiple files at once by using CTRL while browsing for files.</li>
+				<li>Images are automatically resized before uploading to save bandwidth. Make sure you save the original file on your own computer!</li>
+				<li>Ensure that spreadsheets with data points adhere to the <a href="/manual/">rules specified in the manual</a>.</li>
 			</ul>
 		</p>
-		<form role="form" action="file" method="post" enctype="multipart/form-data">
-			<div class="form-group">
-				<input type="file" name="uploadfile">
-			</div>
-			<button type="submit" class="btn btn-primary btn-sm"><i class="fa fa-check"></i> Upload file</button>
-		</form>
+	</div>
+
+	<table class="table table-condensed table-border" id="files-table">
+		
+	</table>
+
+	<div class="panel-body" style="padding-top:5px;border-top:1px solid #ddd;background-color:#f5f5f5;">
+
+		<ul id="file-errors"></ul>
+		<div id="container">
+		
+				<button type="submit" class="btn btn-primary btn-sm" id="select-files"><i class="fa fa-search"></i> Browse for files</button>
+				<button type="submit" class="btn btn-primary btn-sm" id="upload-files"><i class="fa fa-check"></i> Start uploading</button>
+				<button type="submit" class="btn btn-default btn-sm" id="upload-reset"><i class="fa fa-times"></i> Reset</button>
+				<a class="btn btn-default btn-sm" href=""><i class="fa fa-refresh"></i> Reload page</a>
+
+		</div>
 	{%endif%}
 	</div>
 </div>
@@ -101,4 +118,97 @@
 		</div>
 	{% endif %}
 </div>
+{% endblock %}
+
+{% block footjs %}
+<script type="text/javascript">
+// Custom example logic
+
+var uploader = new plupload.Uploader({
+	runtimes : 'html5,flash,silverlight,html4',
+	browse_button : 'select-files', // you can pass an id...
+	container: document.getElementById('container'), // ... or DOM Element itself
+	url : '{{ url_for('project_file',slug=project.slug,user_id=user.id) }}',
+	flash_swf_url : '/static/lib/plupload/js/Moxie.swf',
+	silverlight_xap_url : '/static/lib/plupload/js/Moxie.xap',
+	filters : {
+		max_file_size : '10mb',
+		mime_types: [
+			{title : "Image files", extensions : "jpg,gif,png,jpeg"},
+			{title : "Spreadsheets", extensions : "xls,xlsx"},
+			{title : "Documents", extensions : "doc,docx,pdf"},
+			{title : "Zip files", extensions : "zip"}
+		]
+	},
+	resize: {
+		width: 600,
+		height: 400
+	},
+	init: {
+		PostInit: function() {
+			$('#files-table').html('')
+			//$('#upload-files').prop("disabled",true)
+			document.getElementById('upload-files').onclick = function() {
+				$('#upload-files').prop("disabled",true)
+				$('#select-files').prop("disabled",true)
+				uploader.start();
+				return false;
+			};
+			document.getElementById('upload-reset').onclick = function() {
+				console.log("splice!")
+				$('#files-table').html('')
+				uploader.splice();
+				return false;
+			};
+		},
+		FilesAdded: function(up, files) {
+			$('#upload-files').prop("disabled",false)
+			if(!document.getElementById('upload-files-header')) {
+				$('#files-table').append('<tr id="upload-files-header"><th style="padding-left:15px;width:30%;">Filename</th><th style="width:15%;">Size</th><th style="width:50%;">Progress</th></tr>')
+			}
+			plupload.each(files, function(file) {
+				var icon="fa-file-o"
+				if(file.type.lastIndexOf('image',0)===0) {
+					icon="fa-file-image-o"
+				}
+				$('#files-table').append('<tr id="'+file.id+'"><td style="padding-left:15px;"><i class="fa '+icon+' fa-fw"></i> <code>'+file.name+'</code></td><td>'+plupload.formatSize(file.size)+'<span class="filesize-after" style="color:#aaa;"></span></td><td class="progress-label"><i class="fa fa-clock-o"></i> Waiting in upload queue.</td></tr>')
+			});
+		},
+		UploadProgress: function(up, file) {
+			$('tr#'+file.id+" td.progress-label").html('<i class="fa fa-clock-o"></i> Uploading '+file.percent+"%")
+			//console.log("total pct:"+uploader.total.percent)
+		},
+		FileUploaded: function(up, file, response) {
+			var resp=jQuery.parseJSON(response.response)
+			$('tr#'+file.id+" td.progress-label").html('<i class="fa fa-check-circle"></i> Completed! '+resp['message'])
+			if(file.size < file.origSize) {
+				$('tr#'+file.id+" span.filesize-after").html(' <i class="fa fa-compress"></i> '+plupload.formatSize(file.size))
+			}
+		},
+		// BeforeUpload: function(up, file) {
+		// 	console.log(file.name+" beforeupload!")
+		// 	//$('td#'+file.id).html(file.percent+"%")
+		// 	//document.getElementById(file.id).getElementsByTagName('b')[0].innerHTML = '<span>' + file.percent + "%</span>";
+		// },
+		UploadComplete: function() {
+			$('#upload-files').prop("disabled",false)
+			$('#select-files').prop("disabled",false)
+		},
+		Error: function(up, err) {
+			if (err.hasOwnProperty("file")) {
+				$('tr#'+err.file.id+" td.progress-label").html('<i class="fa fa-exclamation-circle"></i> Failed! <span class="error-message"></span>')
+			}
+			if (err.hasOwnProperty("response")) {
+				response=jQuery.parseJSON(err.response)
+				$('tr#'+err.file.id+" td.progress-label span.error-message").html(response['message'])
+			} else {
+				$('ul#file-errors').append("<li>"+err.message+" (Code "+err.code+")</li>")
+			}
+		}
+	}
+});
+
+uploader.init();
+
+</script>
 {% endblock %}

@@ -328,7 +328,7 @@ class Campaign(db.Model):
                     if returncode==0:
                         cu.time_basemapversion=db.func.now()
                         db.session.commit()
-                        flash("Reloaded basemap data for user <code>%s</code>"%(user.username),"ok")
+                        flash("Reloaded basemap data for user <code>%s</code>"%(user.username),"debug")
                         flash("Command: <code>%s</code>"%(" ".join(cmd)),"debug")
                     else:
                         flash("Failed to reload basemap data for user <code>%s</code>. The map update script returned status code <code>%d</code>."%(user.username,returncode),"error")

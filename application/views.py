@@ -95,6 +95,11 @@ def settings():
         flash("Oops! It seems like you are currently not enrolled in any fieldwork campaigns. Contact your supervisor or enter an invitation key for your fieldwork on your <a href='/settings'>settings page</a>.","info")
     return render_template("settings.html",project_list=current_projects)
 
+@app.route("/manual/",methods=["GET","POST"])
+@login_required
+def manual():
+    return render_template("manual.html")
+
 @app.route("/projects/",methods=["GET","POST"])
 @login_required
 def project_list():
@@ -355,23 +360,27 @@ def project_file(slug,user_id):
     if request.method=="POST":
         try:
             from utils import excel_parser
-            f = request.files['uploadfile']
+            f = request.files['file']
             if f:
                 upload_file=os.path.join(userdata,"attachments",f.filename)
                 f.save(upload_file)
                 if f.filename.endswith((".xls",".xlsx")):
                     spatialite_file=project.features_database(user_id)
-                    rc=excel_parser(upload_file,spatialite_file)
-
-                if rc==False:
-                    flash("An error occurred while trying to parse the uploaded Excel sheet. Please recheck your file and try again.","error")
-                else:
-                    project.basemap_update(user_id)
-                    cu.update_lastactivity()
-                    flash("Upload and processing of file <code>%s</code> completed."%(f.filename),"ok")
+                    (success,message)=excel_parser(upload_file,spatialite_file)
+                    if success==False:
+                        #flash("An error occurred while trying to parse the uploaded Excel sheet. Please recheck your file and try again.","error")
+                        return jsonify(status="FAIL",message=message),500
+                    else:
+                        project.basemap_update(user_id)
+                        cu.update_lastactivity()
+                        #flash("Upload and processing of file <code>%s</code> completed."%(f.filename),"ok")
+                        return jsonify(status="OK",message=message),200
         except Exception as e:
-            flash("An unexpected error occurred during the upload. Hint: %s"%(e),"error")
-    return redirect(url_for('project_data',slug=slug,user_id=user_id))
+            #flash("An unexpected error occurred during the upload. Hint: %s"%(e),"error")
+            return jsonify(status="FAIL",message="Something went wrong trying to process the file. Hint: %s"%(e)),500
+    return jsonify(status="OK",message="File uploaded and processed!"),200
+
+
 
 @app.route("/projects/<slug>/<user_id>/enroll")
 @login_required
