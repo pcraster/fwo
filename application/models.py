@@ -13,6 +13,7 @@ from flask import Flask, render_template, request, redirect, abort, flash, send_
 
 from flask.ext.user import UserManager, UserMixin, SQLAlchemyAdapter
 from flask.ext.user import current_user, login_required, roles_required, UserMixin
+from flask.ext.mail import Mail, Message
 from slugify import slugify
 
 from application import app, db
@@ -131,6 +132,22 @@ class User(db.Model, UserMixin):
             return Campaign.query.all()
         else:
             return Campaign.query.filter(Campaign.users.any(id=self.id)).all()
+    def last_comment_for(self,campaign_id):
+        """
+        Returns the date when this user last made a comment to username in the
+        project project_id. We need this date to compare with the date when the
+        user (student) last made a comment so we can show a link to signify that
+        there are new comments for the supervisor.
+        """
+        feedback_for={}
+        feedback=Feedback.query.filter_by(campaign_id=campaign_id,comment_by=self.id).group_by(Feedback.user_id).order_by("comment_date asc").all()
+        for f in feedback:
+            feedback_for.update({
+                f.user.username:f.comment_date       
+            })
+        return feedback_for
+    
+        
 
 class BackgroundLayer(db.Model):
     id = db.Column(db.Integer(), primary_key=True)
@@ -147,6 +164,7 @@ class BackgroundLayer(db.Model):
 class Feedback(db.Model):
     id = db.Column(db.Integer(), primary_key=True)
     user_id = db.Column(db.Integer(), db.ForeignKey('user.id'))
+    user = db.relationship('User', lazy='joined', foreign_keys=user_id)
     campaign_id = db.Column(db.Integer(), db.ForeignKey('campaign.id'))
     map_state = db.Column(db.Text(), nullable=True, unique=False)
     map_view = db.Column(db.String(255), nullable=True, unique=False) #x,y,z
@@ -161,11 +179,14 @@ class Feedback(db.Model):
     broadcast = db.Column(db.Boolean(), nullable=False, default=False) #not in use. for broadcasting to all enrolled users
     read_unread = db.Column(db.Boolean(), nullable=False, default=False) #not in use. for toggling a comment as read/unread
     def __repr__(self):
-        return "Feedback!"
+        return "<Feedback for user %d by user %d>"%(self.user_id,self.comment_by)
     @property
     def comment_age(self):
         delta=datetime.datetime.utcnow()-self.comment_date
         seconds=delta.seconds+(delta.days*24*3600)
+        
+        
+        return self.comment_date.strftime("%d %B at %H:%M")
         if seconds < 60:
             return "Less than one minute ago"
         if seconds < 3600:
@@ -175,13 +196,19 @@ class Feedback(db.Model):
         else:
             #%a %d %B at %H:%M
             return self.comment_date.strftime("%d %B at %H:%M")
-    def attachhed_files():
+    def attachhed_files(self):
         """
         Return a list of files attached to this comment. Link through a feedback/file view of 
         some sort.
         """
         pass
+    @property
+    def all_replies(self):
+        return Feedback.query.filter_by(comment_parent=self.id).order_by("comment_date asc").all()
 
+##
+## FeedbackReply is not used anymore!!!
+##
 class FeedbackReply(db.Model):
     id = db.Column(db.Integer(), primary_key=True)
     feedback_id = db.Column(db.Integer(), db.ForeignKey('feedback.id', ondelete='CASCADE'))
@@ -480,6 +507,7 @@ class CampaignUsers(db.Model):
             #total_seconds() is new in python 2.7
             #seconds=delta.total_seconds()
             seconds=delta.seconds+(delta.days*24*3600)
+            return self.time_lastactivity.strftime("%d %B at %H:%M")
             if seconds < 60:
                 return "Less than one minute ago"
             if seconds < 3600:
@@ -489,7 +517,18 @@ class CampaignUsers(db.Model):
             else:
                 #%a %d %B at %H:%M
                 return self.time_lastactivity.strftime("%d %B at %H:%M")
+    @property
+    def last_post(self):
+        """
+        Time of posting either a comment or comment reply.
+        """
+        last_feedback=Feedback.query.filter_by(comment_by=self.user_id,campaign_id=self.campaign_id).order_by("comment_date desc").first()
+        if last_feedback==None:
+            return datetime.datetime(2000, 1, 1, 12, 00, 00)
+        else:
+            return last_feedback.comment_date
 
 
 db_adapter = SQLAlchemyAdapter(db,  User)       # Select database adapter
 user_manager = UserManager(db_adapter, app)     # Init Flask-User and bind to app
+mail = Mail(app)

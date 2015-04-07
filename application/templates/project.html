@@ -18,7 +18,7 @@
 
 
 
-<div class="panel panel-default">
+			<div class="panel panel-default">
 				<div class="panel-heading">
 					<strong><i class="fa fa-users"></i> Enrolled students</strong>
 				</div>
@@ -60,6 +60,12 @@
 							{% for membership in user.memberships %}
 								{% if membership.campaign_id == project.id %}
 								Last data upload: <code>{{membership.text_lastactivity}}</code><br/>
+
+
+								<!--
+								Last comment by {{user.username}}: {{ membership.last_post }}
+								Last comment for {{user.username}} by {{current_user.username}}: {{comments[user.username]}}
+								-->
 								{% endif %}
 								<!--
 								{% if membership.campaign_id == project.id %}
@@ -67,12 +73,20 @@
 								{% endif %}
 								-->
 							{% endfor %}
+
 							</td>
 
 							<td style="text-align:right;">
 
 								{% for membership in user.memberships %}
 									{% if membership.campaign_id == project.id and current_user.is_admin %}
+
+										{% if membership.last_post > comments[user.username] %}
+											<a class="btn btn-success btn-sm" href="/projects/{{project.slug}}/{{user.id}}/feedback" >
+											<i class="fa fa-comments"></i></a> 
+										{% else %}
+
+										{% endif %}
 										{% if project.time_basemap > membership.time_basemap %}
 											<a class="btn btn-success btn-sm" href="/projects/{{project.slug}}/?action=reload&amp;user_id={{user.id}}" >
 											<i class="fa fa-refresh  fa-fw"></i> Update basemap</a> 
@@ -147,6 +161,7 @@
 							{% for membership in user.memberships %}
 								{% if membership.campaign_id == project.id %}
 								Last data upload: <code>{{membership.text_lastactivity}}</code><br/>
+								Last comment by {{user.username}}:  {{ membership.last_post }}
 								{% endif %}
 								<!--
 								{% if membership.campaign_id == project.id %}

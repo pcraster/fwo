@@ -206,7 +206,8 @@ def project(slug=None):
         
         enrollable_users=User.query.filter(~User.campaigns.contains(project)).all()
         backgroundlayers=BackgroundLayer.query.filter_by(campaign_id=project.id).all()
-        return render_template("project.html",project=project,supervisors=supervisors,students=students,enrollable_users=enrollable_users,backgroundlayers=backgroundlayers)
+        comments=current_user.last_comment_for(campaign_id=project.id)
+        return render_template("project.html",project=project,supervisors=supervisors,students=students,enrollable_users=enrollable_users,backgroundlayers=backgroundlayers,comments=comments)
     else:
         #
         #Else forward the user to the user's fieldwork homepage
@@ -262,30 +263,36 @@ def project_feedback(slug,user_id):
         return render_template("denied.html")
     if request.method=="POST":
         #Posting some feedback/comment or a reply to one
-        if request.form.get('comment_parent','')=='':
-            #A new comment
-            try:
-                db.session.add(Feedback(
-                    user_id=user.id,
-                    campaign_id=project.id,
-                    comment_by=current_user.id,
-                    comment_body=request.form.get('comment_body',''),
-                    map_state=request.form.get('map_state',''),
-                    map_view=request.form.get('map_view',''),
-                    map_marker=request.form.get('map_marker','')
-                ))
-                db.session.commit()
-                return jsonify(status="OK",message="Feedback posted!"),200
-            except Exception as e:
-                return jsonify(status="FAIL",message="Something went wrong trying to add feedback. Hint: %s"%(e)),500
-        else:
-            #A reply to an existing comment. This is stored as a FeedbackReply.
-            parent=Feedback.query.get(int(request.form.get('comment_parent')))
-            parent.replies.append(
-                FeedbackReply(request.form.get('comment_body'),current_user.id)            
-            )
-            db.session.commit()
+        try:
+            comment_parent=int(request.form.get('comment_parent',''))
+        except:
+            comment_parent=None
             
+        #A new comment
+        try:
+            db.session.add(Feedback(
+                user_id=user.id,
+                campaign_id=project.id,
+                comment_by=current_user.id,
+                comment_body=request.form.get('comment_body',''),
+                comment_parent=comment_parent,
+                map_state=request.form.get('map_state',''),
+                map_view=request.form.get('map_view',''),
+                map_marker=request.form.get('map_marker','')
+            ))
+            db.session.commit()
+            return jsonify(status="OK",message="Feedback posted!"),200
+        except Exception as e:
+            return jsonify(status="FAIL",message="Something went wrong trying to add feedback. Hint: %s"%(e)),500
+#        else:
+#            
+#            #A reply to an existing comment. This is stored as a FeedbackReply.
+#            parent=Feedback.query.get(int(request.form.get('comment_parent')))
+#            parent.replies.append(
+#                FeedbackReply(request.form.get('comment_body'),current_user.id)            
+#            )
+#            db.session.commit()
+#            
             
     feedback=Feedback.query.filter_by(user_id=user.id,campaign_id=project.id).order_by("comment_date desc").all()
     if not feedback:
@@ -302,14 +309,14 @@ def project_feedback_json(slug,user_id):
     cu=CampaignUsers.query.filter(CampaignUsers.campaign_id==project.id,CampaignUsers.user_id==user.id).first()
     if (user.id != current_user.id) and (not current_user.is_supervisor) and (not current_user.is_admin):
         return render_template("denied.html")
-    feedback=Feedback.query.filter_by(user_id=user.id,campaign_id=project.id).order_by("comment_date desc").all()
+    feedback=Feedback.query.filter_by(user_id=user.id,campaign_id=project.id,comment_parent=None).order_by("comment_date desc").all()
     if not feedback:
         return jsonify([]),200
     else:
         f=[]
         for comment in feedback:
             replies=[]
-            for reply in comment.replies:
+            for reply in comment.all_replies:
                 replies.append({
                     'reply_by':reply.comment_by_user.username,
                     'comment_age':reply.comment_age,
