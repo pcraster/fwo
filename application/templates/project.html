@@ -81,12 +81,11 @@
 								{% for membership in user.memberships %}
 									{% if membership.campaign_id == project.id %}
 										{% if membership.last_post and comments[user.username] %}
-											{% if membership.last_post > comments[user.username] %}
+											{% if membership.last_post < comments[user.username] %}
 											        <a class="btn btn-success btn-sm" href="/projects/{{project.slug}}/{{user.id}}/feedback" >
 											        <i class="fa fa-comments"></i></a>
 											{% else %}
-											        <a class="btn btn-default btn-sm" href="/projects/{{project.slug}}/{{user.id}}/feedback" style="background-color:#fff;">
-											        <i class="fa fa-comments"></i></a>
+											        <!--no comments-->
 											{% endif %}
 										{% endif %}
 									{% endif %}

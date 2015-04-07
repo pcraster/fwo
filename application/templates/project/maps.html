@@ -13,7 +13,7 @@
   <script>
     WMS_URL='/wms/{{wms_key}}';
     BACKGROUND_LAYERS={
-        url: '{{request.host}}',
+        url: '{{mapserver_url}}',
         params: {
           'LAYERS':'{{project.background_layer_default}}',
           'TILED': true,
