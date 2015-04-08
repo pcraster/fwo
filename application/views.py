@@ -456,23 +456,6 @@ def wmsproxy(wms_key=None):
 
 
 
-@app.route("/install")
-def install():
-    """
-    The install view is no longer used. After creating the database, the initial
-    admin, supervisor, and student user, as well as the default dummy project, 
-    are added by the "initdb" management command in ./manage.py. The users are 
-    given random passwords which are saved in "install.txt" in the data directory
-    for later reference.
-    """
-    return render_template("install.html")
-
-
-#
-#
-# Some simple views for error handling.
-#
-#
 @app.errorhandler(403)
 def permission_denied(e):
     return render_template('errors/403_permission_denied.html'), 403
@@ -485,6 +468,6 @@ def request_too_large(e):
 def page_not_found(e):
     return render_template('errors/404_not_found.html'), 404
 
-# @app.errorhandler(500)
-# def internal_server_error(e):
-#     return render_template('errors/500_internal_server_error.html'), 500
+@app.errorhandler(500)
+def internal_server_error(e):
+    return render_template('errors/500_internal_server_error.html'), 500

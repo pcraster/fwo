@@ -15,9 +15,6 @@
 </div>
 	<div class="row">
 		<div class="col-md-12 col-sm-12">
-
-
-
 			<div class="panel panel-default">
 				<div class="panel-heading">
 					<strong><i class="fa fa-users"></i> Enrolled students</strong>
@@ -52,65 +49,38 @@
 									{{user.username}}
 								</code>
 							</td>
-
 							<td>
 								{{user.email}}
 							</td>
 							<td>
-							{% for membership in user.memberships %}
-								{% if membership.campaign_id == project.id %}
-								Last data upload: <code>{{membership.text_lastactivity}}</code><br/>
-
-
-								<!--
-								Last comment by {{user.username}}: {{ membership.last_post }}
-								Last comment for {{user.username}} by {{current_user.username}}: {{comments[user.username]}}
-								-->
-								{% endif %}
-								<!--
-								{% if membership.campaign_id == project.id %}
-								Web services: <code><i class="fa fa-share-alt"></i> {{membership.wms_url}}</code>
-								{% endif %}
-								-->
-							{% endfor %}
-
-							</td>
-
-							<td style="text-align:right;">
-
 								{% for membership in user.memberships %}
 									{% if membership.campaign_id == project.id %}
-										{% if membership.last_post and comments[user.username] %}
-											{% if membership.last_post < comments[user.username] %}
-											        <a class="btn btn-success btn-sm" href="/projects/{{project.slug}}/{{user.id}}/feedback" >
-											        <i class="fa fa-comments"></i></a>
-											{% else %}
-											        <!--no comments-->
-											{% endif %}
-										{% endif %}
+									Last data upload: <code>{{membership.text_lastactivity}}</code><br/>
+									<!--
+									Last comment by {{user.username}}: {{ membership.last_post }}
+									Last comment for {{user.username}} by {{current_user.username}}: {{comments[user.username]}}
+									-->
 									{% endif %}
-
-									{% if membership.campaign_id == project.id and current_user.is_admin %}
-
+								{% endfor %}
+							</td>
+							<td style="text-align:right;">
+								{% for membership in user.memberships %}
+									{% if membership.campaign_id == project.id %}
 										{% if membership.last_post > comments[user.username] %}
-											<a class="btn btn-success btn-sm" href="/projects/{{project.slug}}/{{user.id}}/feedback" >
-											<i class="fa fa-comments"></i></a> 
-										{% else %}
-
-										{% endif %}
+									        <a class="btn btn-success btn-sm" href="/projects/{{project.slug}}/{{user.id}}/feedback" >
+									        <i class="fa fa-comments"></i></a>
+										{% endif %}									{% endif %}
+									{% if membership.campaign_id == project.id and current_user.is_admin %}
 										{% if project.time_basemap > membership.time_basemap %}
 											<a class="btn btn-success btn-sm" href="/projects/{{project.slug}}/?action=reload&amp;user_id={{user.id}}" >
 											<i class="fa fa-refresh  fa-fw"></i> Update basemap</a> 
 										{% else %}
 											<a class="btn btn-default btn-sm" href="/projects/{{project.slug}}/?action=reload&amp;user_id={{user.id}}">
-											<i class="fa fa-check fa-fw"></i> Update basemap</a> 
+											<i class="fa fa-refresh fa-fw"></i> Update basemap</a> 
 										{% endif %}
-
 									{% endif %}
 								{% endfor %}
-								
 								<a class="btn btn-primary btn-sm" href="/projects/{{project.slug}}/{{user.id}}/maps"><i class="fa fa-search"></i> View workspace</a>
-							
 							</td>
 						</tr>
 						{% endfor %}

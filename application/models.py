@@ -16,6 +16,9 @@ from flask.ext.user import current_user, login_required, roles_required, UserMix
 from flask.ext.mail import Mail, Message
 from slugify import slugify
 
+from collections import defaultdict
+
+
 from application import app, db
 
 
@@ -137,16 +140,15 @@ class User(db.Model, UserMixin):
         Returns the date when this user last made a comment to username in the
         project project_id. We need this date to compare with the date when the
         user (student) last made a comment so we can show a link to signify that
-        there are new comments for the supervisor.
+        there are new comments for the supervisor. The returned dict is a 
+        defaultdict which returns a date in 2000 if the key (user id) is not
+        found.
         """
-        feedback_for={}
+        feedback_for = defaultdict(lambda: datetime.datetime(2000, 1, 1, 12, 0, 0))
         feedback=Feedback.query.filter_by(campaign_id=campaign_id,comment_by=self.id).group_by(Feedback.user_id).order_by("comment_date asc").all()
         for f in feedback:
-            feedback_for.update({
-                f.user.username:f.comment_date       
-            })
+            feedback_for[f.user.username]=f.comment_date
         return feedback_for
-    
         
 
 class BackgroundLayer(db.Model):
@@ -282,7 +284,7 @@ class Campaign(db.Model):
             return self.basemap_version
         else:
             #return a date well in the past so that now() is always newer
-            return datetime.datetime(2000, 8, 4, 12, 30, 45)
+            return datetime.datetime(2000, 0, 0, 12, 0, 0)
     @property
     def basedir(self):
         return os.path.join(app.config["DATADIR"],"campaigns",self.slug)
@@ -497,7 +499,7 @@ class CampaignUsers(db.Model):
         if self.time_basemapversion:
             return self.time_basemapversion
         else:
-            return datetime.datetime(2000, 8, 4, 12, 30, 45)
+            return datetime.datetime(2000, 1, 1, 12, 00, 00)
     @property
     def text_lastactivity(self):
         if not self.time_lastactivity:
