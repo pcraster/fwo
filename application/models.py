@@ -284,7 +284,7 @@ class Campaign(db.Model):
             return self.basemap_version
         else:
             #return a date well in the past so that now() is always newer
-            return datetime.datetime(2000, 0, 0, 12, 0, 0)
+            return datetime.datetime(2000, 1, 1, 12, 0, 0)
     @property
     def basedir(self):
         return os.path.join(app.config["DATADIR"],"campaigns",self.slug)
