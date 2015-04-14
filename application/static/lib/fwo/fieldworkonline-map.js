@@ -209,4 +209,7 @@ $(function() {
 	if(document.getElementById('map') != null) {
 		FWO.map.init()
 	}
+	if(document.getElementById('zoom-to-project-extent') != null) {
+		$("a#zoom-to-project-extent").click()
+	}
 })
