@@ -1,7 +1,14 @@
 {% extends "base.html" %}
-{% block headjs %}
+
+{% block footjs %}
+	<script type="text/javascript">
+		/* define the upload url where the uploaded files are posted to. */
+		upload_url="{{ url_for('project_file',slug=project.slug,user_id=user.id) }}"
+	</script>
 	<script src="/static/lib/plupload/plupload.full.min.js"></script>
+	<script src="/static/lib/fwo/fieldworkonline-data.js"></script>
 {% endblock %}
+
 {% block content %}
 <!--
 <div class="well"  style="margin-top:15px;">
@@ -32,19 +39,16 @@
 	</div>
 
 	<table class="table table-condensed table-border" id="files-table">
-		
 	</table>
 
 	<div class="panel-body" style="padding-top:5px;border-top:1px solid #ddd;background-color:#f5f5f5;">
 
 		<ul id="file-errors"></ul>
 		<div id="container">
-		
-				<button type="submit" class="btn btn-primary btn-sm" id="select-files"><i class="fa fa-search"></i> Browse for files</button>
-				<button type="submit" class="btn btn-primary btn-sm" id="upload-files"><i class="fa fa-check"></i> Start uploading</button>
-				<button type="submit" class="btn btn-default btn-sm" id="upload-reset"><i class="fa fa-times"></i> Reset</button>
-				<a class="btn btn-default btn-sm" href=""><i class="fa fa-refresh"></i> Reload page</a>
-
+			<button type="submit" class="btn btn-primary btn-sm" id="select-files"><i class="fa fa-search"></i> Browse for files</button>
+			<button type="submit" class="btn btn-primary btn-sm" id="upload-files"><i class="fa fa-check"></i> Start uploading</button>
+			<button type="submit" class="btn btn-default btn-sm" id="upload-reset"><i class="fa fa-times"></i> Reset</button>
+			<a class="btn btn-default btn-sm" href=""><i class="fa fa-refresh"></i> Reload page</a>
 		</div>
 	{%endif%}
 	</div>
@@ -120,95 +124,4 @@
 </div>
 {% endblock %}
 
-{% block footjs %}
-<script type="text/javascript">
-// Custom example logic
 
-var uploader = new plupload.Uploader({
-	runtimes : 'html5,flash,silverlight,html4',
-	browse_button : 'select-files', // you can pass an id...
-	container: document.getElementById('container'), // ... or DOM Element itself
-	url : '{{ url_for('project_file',slug=project.slug,user_id=user.id) }}',
-	flash_swf_url : '/static/lib/plupload/js/Moxie.swf',
-	silverlight_xap_url : '/static/lib/plupload/js/Moxie.xap',
-	filters : {
-		max_file_size : '10mb',
-		mime_types: [
-			{title : "Image files", extensions : "jpg,gif,png,jpeg"},
-			{title : "Spreadsheets", extensions : "xls,xlsx"},
-			{title : "Documents", extensions : "doc,docx,pdf"},
-			{title : "Zip files", extensions : "zip"}
-		]
-	},
-	resize: {
-		width: 600,
-		height: 400
-	},
-	init: {
-		PostInit: function() {
-			$('#files-table').html('')
-			//$('#upload-files').prop("disabled",true)
-			document.getElementById('upload-files').onclick = function() {
-				$('#upload-files').prop("disabled",true)
-				$('#select-files').prop("disabled",true)
-				uploader.start();
-				return false;
-			};
-			document.getElementById('upload-reset').onclick = function() {
-				console.log("splice!")
-				$('#files-table').html('')
-				uploader.splice();
-				return false;
-			};
-		},
-		FilesAdded: function(up, files) {
-			$('#upload-files').prop("disabled",false)
-			if(!document.getElementById('upload-files-header')) {
-				$('#files-table').append('<tr id="upload-files-header"><th style="padding-left:15px;width:30%;">Filename</th><th style="width:15%;">Size</th><th style="width:50%;">Progress</th></tr>')
-			}
-			plupload.each(files, function(file) {
-				var icon="fa-file-o"
-				if(file.type.lastIndexOf('image',0)===0) {
-					icon="fa-file-image-o"
-				}
-				$('#files-table').append('<tr id="'+file.id+'"><td style="padding-left:15px;"><i class="fa '+icon+' fa-fw"></i> <code>'+file.name+'</code></td><td>'+plupload.formatSize(file.size)+'<span class="filesize-after" style="color:#aaa;"></span></td><td class="progress-label"><i class="fa fa-clock-o"></i> Waiting in upload queue.</td></tr>')
-			});
-		},
-		UploadProgress: function(up, file) {
-			$('tr#'+file.id+" td.progress-label").html('<i class="fa fa-clock-o"></i> Uploading '+file.percent+"%")
-			//console.log("total pct:"+uploader.total.percent)
-		},
-		FileUploaded: function(up, file, response) {
-			var resp=jQuery.parseJSON(response.response)
-			$('tr#'+file.id+" td.progress-label").html('<i class="fa fa-check-circle"></i> Completed! '+resp['message'])
-			if(file.size < file.origSize) {
-				$('tr#'+file.id+" span.filesize-after").html(' <i class="fa fa-compress"></i> '+plupload.formatSize(file.size))
-			}
-		},
-		// BeforeUpload: function(up, file) {
-		// 	console.log(file.name+" beforeupload!")
-		// 	//$('td#'+file.id).html(file.percent+"%")
-		// 	//document.getElementById(file.id).getElementsByTagName('b')[0].innerHTML = '<span>' + file.percent + "%</span>";
-		// },
-		UploadComplete: function() {
-			$('#upload-files').prop("disabled",false)
-			$('#select-files').prop("disabled",false)
-		},
-		Error: function(up, err) {
-			if (err.hasOwnProperty("file")) {
-				$('tr#'+err.file.id+" td.progress-label").html('<i class="fa fa-exclamation-circle"></i> Failed! <span class="error-message"></span>')
-			}
-			if (err.hasOwnProperty("response")) {
-				response=jQuery.parseJSON(err.response)
-				$('tr#'+err.file.id+" td.progress-label span.error-message").html(response['message'])
-			} else {
-				$('ul#file-errors').append("<li>"+err.message+" (Code "+err.code+")</li>")
-			}
-		}
-	}
-});
-
-uploader.init();
-
-</script>
-{% endblock %}
