@@ -21,26 +21,26 @@
   <script type="text/javascript" src="/static/lib/openlayers/ol.js"></script>
 
   <script type="text/javascript">
-    var entityMap = {
-      "&": "&amp;",
-      "<": "&lt;",
-      ">": "&gt;",
-      '"': '&quot;',
-      "'": '&#39;',
-      "/": '&#x2F;'
-    }
-    function escapeHtml(string) {
-      return String(string).replace(/[&<>"'\/]/g, function (s) {
-        return entityMap[s];
-      });
-    }
+    // var entityMap = {
+    //   "&": "&amp;",
+    //   "<": "&lt;",
+    //   ">": "&gt;",
+    //   '"': '&quot;',
+    //   "'": '&#39;',
+    //   "/": '&#x2F;'
+    // }
+    // function escapeHtml(string) {
+    //   return String(string).replace(/[&<>"'\/]/g, function (s) {
+    //     return entityMap[s];
+    //   });
+    // }
     function arrayWrap(obj,property) {
-      /*
-      Returns properties of an object wrapped in an array so they can 
-      be iterated over. If the property does not exist an empty array is 
-      returned (so that any iteration code afterwards still works fine by
-      just iterating zero times).
-      */
+      
+      // Returns properties of an object wrapped in an array so they can 
+      // be iterated over. If the property does not exist an empty array is 
+      // returned (so that any iteration code afterwards still works fine by
+      // just iterating zero times).
+      
       
       if(obj.hasOwnProperty(property)) {
         return obj[property] instanceof Array?obj[property]:[obj[property]]
@@ -159,107 +159,107 @@
       })
       return visible_wms_layers.reverse().join()
     }
-    function parseFeatureInfo(data) {
-      /*
-      Returns a block of html to fill the getFeatureInfo popup with.
-      */
-      var html=''
-      if(data.hasOwnProperty("GetFeatureInfoResponse")) {
-        var layers=arrayWrap(data.GetFeatureInfoResponse,"Layer")
-        layers.reverse()
-        html+=layersToRows(layers)
-      }
-      return html
-    }
-    function layersToRows(layers) {
-      var html=''
-      var n=0
-      $.each(layers,function(index,layer){
-        var features=arrayWrap(layer,"Feature")
-        var rows=''
-        $.each(features,function(index,feature){
-          var feature_attributes=arrayWrap(feature,"Attribute")
-          rows+=attributesToRows(feature_attributes)
-        })
-        var attributes=arrayWrap(layer,"Attribute")
-        rows+=attributesToRows(attributes)
-        if(rows!='') {
-          var layer_html_rows="<tr class='__TRCLASS__' style='background-color:#eee;'><td colspan='2'><strong>"+layer["@name"]+"</strong></td></tr>"+rows
-          html+=layer_html_rows.replace(/__TRCLASS__/g,(n>0)?'not-top-layer':'')
-          n++;
-        }
-      })
-      return html
+    // function parseFeatureInfo(data) {
+    //   /*
+    //   Returns a block of html to fill the getFeatureInfo popup with.
+    //   */
+    //   var html=''
+    //   if(data.hasOwnProperty("GetFeatureInfoResponse")) {
+    //     var layers=arrayWrap(data.GetFeatureInfoResponse,"Layer")
+    //     layers.reverse()
+    //     html+=layersToRows(layers)
+    //   }
+    //   return html
+    // }
+    // function layersToRows(layers) {
+    //   var html=''
+    //   var n=0
+    //   $.each(layers,function(index,layer){
+    //     var features=arrayWrap(layer,"Feature")
+    //     var rows=''
+    //     $.each(features,function(index,feature){
+    //       var feature_attributes=arrayWrap(feature,"Attribute")
+    //       rows+=attributesToRows(feature_attributes)
+    //     })
+    //     var attributes=arrayWrap(layer,"Attribute")
+    //     rows+=attributesToRows(attributes)
+    //     if(rows!='') {
+    //       var layer_html_rows="<tr class='__TRCLASS__' style='background-color:#eee;'><td colspan='2'><strong>"+layer["@name"]+"</strong></td></tr>"+rows
+    //       html+=layer_html_rows.replace(/__TRCLASS__/g,(n>0)?'not-top-layer':'')
+    //       n++;
+    //     }
+    //   })
+    //   return html
 
-    }
-    function attributesToRows(attributes) {
-      /*
-      Returns a html table rows for an array of attributes. This also checks
-      for attribute values which may be filenames (such as links to uploaded
-      images) as well as HTML links.
-      */
-      var html=''
-      $.each(attributes,function(index,attribute){
-        html+="<tr class='__TRCLASS__'><td><nobr>"+attribute["@name"]+"</nobr></td><td>"+attributeValueParser(attribute["@value"])+"</td></tr>"
-      })
-      return html
-    }
-    function attributeValueParser(value) {
-      /*
-      Returns a parsed attribute value for in the popup. This checks whether the
-      attribute value is a URL, a filename linking to an uploaded attachment, or
-      a paragraph of text. Depending on the type of data it will turn it into a 
-      link, paragraph, or wrap it in a <code> tag.
+    // }
+    // function attributesToRows(attributes) {
+    //   /*
+    //   Returns a html table rows for an array of attributes. This also checks
+    //   for attribute values which may be filenames (such as links to uploaded
+    //   images) as well as HTML links.
+    //   */
+    //   var html=''
+    //   $.each(attributes,function(index,attribute){
+    //     html+="<tr class='__TRCLASS__'><td><nobr>"+attribute["@name"]+"</nobr></td><td>"+attributeValueParser(attribute["@value"])+"</td></tr>"
+    //   })
+    //   return html
+    // }
+    // function attributeValueParser(value) {
+    //   /*
+    //   Returns a parsed attribute value for in the popup. This checks whether the
+    //   attribute value is a URL, a filename linking to an uploaded attachment, or
+    //   a paragraph of text. Depending on the type of data it will turn it into a 
+    //   link, paragraph, or wrap it in a <code> tag.
 
-      Todo: - change look & feel of large texts. (ie. show a teaser, click to
-              open a modal with the full text)
-            - check if attachments have been uploaded with a HEAD request, show
-              pics in modal and download dialog for other files.
-            - check urls using a regex
-      */
+    //   Todo: - change look & feel of large texts. (ie. show a teaser, click to
+    //           open a modal with the full text)
+    //         - check if attachments have been uploaded with a HEAD request, show
+    //           pics in modal and download dialog for other files.
+    //         - check urls using a regex
+    //   */
 
-      //Valid filename extensions. Ensures that values such as "12.312" are not
-      //seen as files.
-      var filename_extensions="png jpg txt doc docx xls xlsx jpeg";
+    //   //Valid filename extensions. Ensures that values such as "12.312" are not
+    //   //seen as files.
+    //   var filename_extensions="png jpg txt doc docx xls xlsx jpeg";
 
-      //Text length to turn into a paragraph. If a lot of text is present as an
-      //attribute value (such as a detailed description of something) it is
-      //better to format it as a paragraph rather than an attribute value in a
-      //<code> element.
-      var length_max=128;
-      var length_truncate=256;
+    //   //Text length to turn into a paragraph. If a lot of text is present as an
+    //   //attribute value (such as a detailed description of something) it is
+    //   //better to format it as a paragraph rather than an attribute value in a
+    //   //<code> element.
+    //   var length_max=128;
+    //   var length_truncate=256;
 
-      var filename_regex=/\.([0-9a-z]+)(?:[\?#]|$)/i;
-      var filename_list=value.split(",")
-      var filename_html=''
+    //   var filename_regex=/\.([0-9a-z]+)(?:[\?#]|$)/i;
+    //   var filename_list=value.split(",")
+    //   var filename_html=''
 
-      $.each(filename_list,function(index,filename){
-        var filename_match=filename.match(filename_regex);
-        if(filename_match) {
-          var filename_extension=filename_match[1].toLowerCase()
-          if($.inArray(filename_extension,filename_extensions.split(" "))!=-1) {
-            var is_image=(filename_extension=='png' || filename_extension=='jpeg' || filename_extension=='jpg')?true:false;
-            var filename_url="file?filename="+filename;
-            if(is_image){
-              filename_html+= "<i class='fa fa-photo'></i> <code><a href='#' onclick=\"photoModal('"+filename_url+"')\" class='disabled'>"+filename+"</a></code><br/>"
-            } else {
-              filename_html+= "<i class='fa fa-paperclip'></i> <code><a href='"+filename_url+"' class='disabled' target='_blank'>"+filename+"</a></code><br/>"
-            }
-          }
-        }
-      })
-      if(filename_html=='') {
-        if(value.length>length_max) {
-            value=""+value
-            return "<p>"+escapeHtml(value)+"</p>"
-        } else {
-          value=""+value
-          return "<code>"+escapeHtml(value)+"</code>"
-        }
-      } else {
-        return filename_html
-      }
-    }
+    //   $.each(filename_list,function(index,filename){
+    //     var filename_match=filename.match(filename_regex);
+    //     if(filename_match) {
+    //       var filename_extension=filename_match[1].toLowerCase()
+    //       if($.inArray(filename_extension,filename_extensions.split(" "))!=-1) {
+    //         var is_image=(filename_extension=='png' || filename_extension=='jpeg' || filename_extension=='jpg')?true:false;
+    //         var filename_url="file?filename="+filename;
+    //         if(is_image){
+    //           filename_html+= "<i class='fa fa-photo'></i> <code><a href='#' onclick=\"photoModal('"+filename_url+"')\" class='disabled'>"+filename+"</a></code><br/>"
+    //         } else {
+    //           filename_html+= "<i class='fa fa-paperclip'></i> <code><a href='"+filename_url+"' class='disabled' target='_blank'>"+filename+"</a></code><br/>"
+    //         }
+    //       }
+    //     }
+    //   })
+    //   if(filename_html=='') {
+    //     if(value.length>length_max) {
+    //         value=""+value
+    //         return "<p>"+escapeHtml(value)+"</p>"
+    //     } else {
+    //       value=""+value
+    //       return "<code>"+escapeHtml(value)+"</code>"
+    //     }
+    //   } else {
+    //     return filename_html
+    //   }
+    // }
 
   </script>
   <!--
@@ -273,6 +273,7 @@
   -->
   <script type="text/javascript" src="/wms/{{wms_key}}?SERVICE=WMS&amp;VERSION=1.3&amp;REQUEST=GetProjectSettings&amp;FORMAT=application/json&amp;JSONP=setprojectsettings"></script>
   <script type="text/javascript" src="/static/lib/fwo/fieldworkonline-map.js"></script>
+  <script type="text/javascript" src="/static/lib/fwo/fieldworkonline-popup.js"></script>
 {% endblock %}
 
 {% block maps %}
@@ -348,5 +349,6 @@
             </div>
           </div>
     </div>
-
+    {% include "feedback.html" %}
+    {% include "photomodal.html" %}
 {% endblock %}

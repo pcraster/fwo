@@ -107,6 +107,7 @@ var FWO=$.extend(FWO || {},{
                 ])
             }),
             init:function(){
+                FWO.comments.map.foreground_wms_layer._useForGetFeatureRequests=true
                 FWO.comments.map.obj.addLayer(FWO.comments.map.background_layer_aerial)
                 FWO.comments.map.obj.addLayer(FWO.comments.map.background_layer_road)
                 FWO.comments.map.obj.addLayer(FWO.comments.map.background_wms_layer)

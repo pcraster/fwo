@@ -40,7 +40,14 @@
 	</script>
 	<script type="text/javascript" src="/static/js/ol.js"></script>
 	<script type="text/javascript" src="/static/lib/fwo/fieldworkonline-feedback.js"></script>
-
+    <script type="text/javascript" src="/static/lib/fwo/fieldworkonline-popup.js"></script>
+    <script type="text/javascript">
+        $(function() {
+            console.log("trying to init with")
+            console.log(FWO.comments.map.obj)
+            FWO.popup.init(FWO.comments.map.obj)
+        })
+    </script>
 {% endblock %}
 {% block content %}
 	<!--<h2>Project feedback</h2>-->
@@ -101,6 +108,26 @@
                 </div>
         </div>
 </div>
+
+
+
+
+          <div class="col-md-9 col-sm-9" style="padding-right:0px;padding-left:0;">
+            <div id="map" class="map">
+              <div id="popup" class="ol-popup">
+                <div id="popup-header" style="height:20px;">
+                  <form>
+                    <input type="checkbox" id="checkbox-identify-toplayer-only">
+                    <a href="#" id="identify-toplayer-only">Show hits on topmost layer only</a>
+                    <a href="#" id="popup-closer" class="ol-popup-closer">Close popup</a>
+                  </form>
+                </div>
+                <div id="popup-content"></div>
+              </div>
+            </div>
+          </div>
+
+        {% include "photomodal.html" %}
 {% endblock %}
 
 

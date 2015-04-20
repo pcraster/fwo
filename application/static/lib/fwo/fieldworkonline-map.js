@@ -4,17 +4,18 @@ var FWO=$.extend(FWO || {},{
 			var controls = ol.control.defaults({rotate: false}).extend([new ol.control.ScaleLine()])
 			var interactions = ol.interaction.defaults({altShiftDragRotate:false, pinchRotate:false});
 			var view = new ol.View({center: ol.proj.transform([5.721586,44.42], 'EPSG:4326', 'EPSG:3857'),zoom: 11})
-
+			FWO.map.layers.qgisServer._useForGetFeatureRequests=true
 			FWO.map.obj = new ol.Map({
 				target: 'map',
 				layers: [FWO.map.layers.backgroundAerial,FWO.map.layers.backgroundRoad,FWO.map.layers.backgroundWms,FWO.map.layers.qgisServer],
-				overlays: [FWO.map.overlay],
+				//overlays: [FWO.map.overlay],
+				overlays:[],
 				view: view,
 				controls: controls,
 				interactions: interactions
 			})
-			FWO.map.obj.on('singleclick',FWO.map.getfeatureinfo)
-			$('a#popup-closer').click(FWO.map.closefeatureinfo)
+			//FWO.map.obj.on('singleclick',FWO.map.getfeatureinfo)
+			//$('a#popup-closer').click(FWO.map.closefeatureinfo)
 			$('a.set-background-layer').click(FWO.map.setbackground)
 			$("a.zoom-to-extent").click(FWO.map.zoom_to_extent)
 			$('ul#background-layers li a').last().click()
@@ -37,7 +38,7 @@ var FWO=$.extend(FWO || {},{
 			})
 		},
 		obj: undefined,
-		overlay: new ol.Overlay({element: document.getElementById('popup')}),
+		//overlay: new ol.Overlay({element: document.getElementById('popup')}),
 		layers:{
 			backgroundAerial:new ol.layer.Tile({
 				visible: true,
@@ -70,41 +71,41 @@ var FWO=$.extend(FWO || {},{
 				})
 			})
 		},
-		getfeatureinfo:function(evt) {
-			/*
-			FWO.map.getfeatureinfo
+		// getfeatureinfo:function(evt) {
+		// 	/*
+		// 	FWO.map.getfeatureinfo
 
-			Click event on the map. Do a GetFeatureInfo request.
-			*/
-			var viewTweak=5; //sets sensitivity of the click area
-			var viewResolution = (viewTweak*FWO.map.obj.getView().getResolution());
-			var url = FWO.map.layers.qgisServer.getSource().getGetFeatureInfoUrl(evt.coordinate, viewResolution, 'EPSG:3857',{'INFO_FORMAT': 'application/json'});
-			if(url) {
-				//console.log("getFeatureInfo: "+url)
-				$.ajax({url:url}).done(function(data){
-					/* fill the popup with data if the request to url completes. */
-					$('#attribute-values').html("")
-					var feedback_link='<tr><td colspan="2" style="background-color:#eee;"><a href="javascript:FWO.feedback.show('+evt.coordinate[0]+','+evt.coordinate[1]+')" id="popup-feedback-link">Leave a comment</a></td></tr>'
-					var html=parseFeatureInfo(data)
-					var el=$(FWO.map.overlay.getElement())
-					var tableclass=$("input#checkbox-identify-toplayer-only").is(":checked")?'show-toplayer-only':''
+		// 	Click event on the map. Do a GetFeatureInfo request.
+		// 	*/
+		// 	var viewTweak=5; //sets sensitivity of the click area
+		// 	var viewResolution = (viewTweak*FWO.map.obj.getView().getResolution());
+		// 	var url = FWO.map.layers.qgisServer.getSource().getGetFeatureInfoUrl(evt.coordinate, viewResolution, 'EPSG:3857',{'INFO_FORMAT': 'application/json'});
+		// 	if(url) {
+		// 		//console.log("getFeatureInfo: "+url)
+		// 		$.ajax({url:url}).done(function(data){
+		// 			/* fill the popup with data if the request to url completes. */
+		// 			$('#attribute-values').html("")
+		// 			var feedback_link='<tr><td colspan="2" style="background-color:#eee;"><a href="javascript:FWO.feedback.show('+evt.coordinate[0]+','+evt.coordinate[1]+')" id="popup-feedback-link">Leave a comment</a></td></tr>'
+		// 			var html=parseFeatureInfo(data)
+		// 			var el=$(FWO.map.overlay.getElement())
+		// 			var tableclass=$("input#checkbox-identify-toplayer-only").is(":checked")?'show-toplayer-only':''
 
-					FWO.map.overlay.setPosition(evt.coordinate);
-					el.find("div#popup-content").html('<table id="popup-attribute-table" class="table table-condensed table-bordered '+tableclass+'" style="margin:0;font-size:0.8em;">'+feedback_link+html+'</table>')
-					el.show()
-				})
-			}
-		},
-		closefeatureinfo:function(evt) {
-			/*
-			Close the feature info popups
-			*/
-			evt.preventDefault()
-			var link=$(this)
-			var popup=$(FWO.map.overlay.getElement())
-			link.blur()
-			popup.hide()
-		},
+		// 			FWO.map.overlay.setPosition(evt.coordinate);
+		// 			el.find("div#popup-content").html('<table id="popup-attribute-table" class="table table-condensed table-bordered '+tableclass+'" style="margin:0;font-size:0.8em;">'+feedback_link+html+'</table>')
+		// 			el.show()
+		// 		})
+		// 	}
+		// },
+		// closefeatureinfo:function(evt) {
+		// 	/*
+		// 	Close the feature info popups
+		// 	*/
+		// 	evt.preventDefault()
+		// 	var link=$(this)
+		// 	var popup=$(FWO.map.overlay.getElement())
+		// 	link.blur()
+		// 	popup.hide()
+		// },
 		setbackground:function(evt) {
 			evt.preventDefault()
 			var link=$(this)
@@ -147,7 +148,8 @@ var FWO=$.extend(FWO || {},{
 			} else {
 				layer.removeClass("wms-layer-hidden").addClass("wms-layer-visible")
 			}
-			FWO.map.layers.qgisServer.getSource().updateParams({'LAYERS':window.getVisibleWmsLayers()})
+			var visible_layers=window.getVisibleWmsLayers()
+			FWO.map.layers.qgisServer.getSource().updateParams({'LAYERS':visible_layers})
 			return false;
 		}
 	},
@@ -194,12 +196,19 @@ var FWO=$.extend(FWO || {},{
 		},
 		submit:function(evt) {
 			evt.preventDefault()
+			//disable the submit button to prevent doubleclicking when a connection is slow...
+			$('button#feedback-modal-submit').prop("disabled",true)
 			$.ajax({
 				type:"POST",
 				url: $(this).attr('action'),
 				data: $(this).serialize(),
 				success: function(data){
+					$('button#feedback-modal-submit').prop("disabled",false)
 					$('#feedback-modal').modal('hide');
+				},
+				error: function() {
+					alert("An error occurred while trying to add your comment!")
+					$('button#feedback-modal-submit').prop("disabled",false)
 				}
 			})
 		}

@@ -8,6 +8,7 @@ import subprocess
 import datetime
 import zipfile 
 import xmltodict
+import time
 
 from flask import Flask, render_template, request, redirect, abort, flash, send_file, send_from_directory, url_for, make_response, Response, jsonify, escape
 
@@ -17,12 +18,34 @@ from flask.ext.mail import Mail, Message
 from slugify import slugify
 
 from collections import defaultdict
-
-
 from application import app, db
 
+def generate_random_key(length=12,choices="abcdefghjkmnpqrstuvwxyz23456789",upper=False):
+    """
+        Generate a random string for use in WMS urls and invite keys.
+    """
+    if upper==True:
+        choices=choices.upper()
+    random.seed()
+    return ''.join(random.choice(choices) for _ in range(length))
 
-# Define User model. Make sure to add flask.ext.user UserMixin!!
+def date_to_text(date):
+    """
+        Convert a date to a user friendly string describing the age of the date
+        like "less than a minute ago" or "6 hours ago". When the date is older
+        than 24 hours just return the formatted date.
+    """
+    delta=datetime.datetime.utcnow()-date
+    seconds=delta.seconds+(delta.days*24*3600)
+    if seconds < 60:
+        return "Less than one minute ago"
+    if seconds < 3600:
+        return "%d minutes ago"%(seconds//60)
+    if seconds < 86400:
+        return "%d hours ago"%(seconds//(60*60))
+    else:
+        return date.strftime("%d %B at %H:%M")
+
 class User(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
     active = db.Column(db.Boolean(), nullable=False, default=False)
@@ -186,9 +209,6 @@ class Feedback(db.Model):
     def comment_age(self):
         delta=datetime.datetime.utcnow()-self.comment_date
         seconds=delta.seconds+(delta.days*24*3600)
-        
-        
-        return self.comment_date.strftime("%d %B at %H:%M")
         if seconds < 60:
             return "Less than one minute ago"
         if seconds < 3600:
@@ -211,31 +231,31 @@ class Feedback(db.Model):
 ##
 ## FeedbackReply is not used anymore!!!
 ##
-class FeedbackReply(db.Model):
-    id = db.Column(db.Integer(), primary_key=True)
-    feedback_id = db.Column(db.Integer(), db.ForeignKey('feedback.id', ondelete='CASCADE'))
-    #feedback = db.relationship('Feedback', secondary='feedback_id', backref=db.backref('replies',lazy='dynamic'))    
-    feedback=db.relationship(Feedback,backref="replies")
-    comment_date = db.Column(db.DateTime(), nullable=False, default=db.func.now())
-    comment_by = db.Column(db.Integer(), db.ForeignKey('user.id'))
-    comment_by_user = db.relationship('User', lazy='joined', foreign_keys=comment_by)    
-    comment_body = db.Column(db.Text(), nullable=True)
-    def __init__(self,comment_body,comment_by):
-        self.comment_body=comment_body
-        self.comment_by=comment_by
-    @property
-    def comment_age(self):
-        delta=datetime.datetime.utcnow()-self.comment_date
-        seconds=delta.seconds+(delta.days*24*3600)
-        if seconds < 60:
-            return "Less than one minute ago"
-        if seconds < 3600:
-            return "%d minutes ago"%(seconds//60)
-        if seconds < 86400:
-            return "%d hours ago"%(seconds//(60*60))
-        else:
-            #%a %d %B at %H:%M
-            return self.comment_date.strftime("%d %B at %H:%M")
+#class FeedbackReply(db.Model):
+#    id = db.Column(db.Integer(), primary_key=True)
+#    feedback_id = db.Column(db.Integer(), db.ForeignKey('feedback.id', ondelete='CASCADE'))
+#    #feedback = db.relationship('Feedback', secondary='feedback_id', backref=db.backref('replies',lazy='dynamic'))    
+#    feedback=db.relationship(Feedback,backref="replies")
+#    comment_date = db.Column(db.DateTime(), nullable=False, default=db.func.now())
+#    comment_by = db.Column(db.Integer(), db.ForeignKey('user.id'))
+#    comment_by_user = db.relationship('User', lazy='joined', foreign_keys=comment_by)    
+#    comment_body = db.Column(db.Text(), nullable=True)
+#    def __init__(self,comment_body,comment_by):
+#        self.comment_body=comment_body
+#        self.comment_by=comment_by
+#    @property
+#    def comment_age(self):
+#        delta=datetime.datetime.utcnow()-self.comment_date
+#        seconds=delta.seconds+(delta.days*24*3600)
+#        if seconds < 60:
+#            return "Less than one minute ago"
+#        if seconds < 3600:
+#            return "%d minutes ago"%(seconds//60)
+#        if seconds < 86400:
+#            return "%d hours ago"%(seconds//(60*60))
+#        else:
+#            #%a %d %B at %H:%M
+#            return self.comment_date.strftime("%d %B at %H:%M")
         
     
 # Define Role model
@@ -266,7 +286,7 @@ class Campaign(db.Model):
         self.name=name
         self.description=description
         random.seed()
-        self.invite_key=''.join(random.choice("ABCDEFGHJKLMNPQRSTUVWXYZ23456789") for _ in range(6))
+        self.invite_key=generate_random_key(length=6,upper=True)
         self.slug=slugify(name)
         basedir=self.basedir
         if not os.path.isdir(basedir):
@@ -410,7 +430,7 @@ class Campaign(db.Model):
                 features.append(row)
             return features
         except Exception as e:
-            flash("Could not load the table of custom features. Probably no features have been uploaded yet by this user.","info")
+            flash("No features have been uploaded yet by this user.","info")
             return []
     def features_database(self,user_id):
         """
@@ -470,10 +490,7 @@ class Campaign(db.Model):
             except Exception as e:
                 pass
         return file_list
-
-def generate_wms_key():
-    random.seed()
-    return ''.join(random.choice("abcdefghjkmnpqrstuvwxyz23456789") for _ in range(12))
+    
 
 class CampaignUsers(db.Model):
     id = db.Column(db.Integer(), primary_key=True)
@@ -482,9 +499,12 @@ class CampaignUsers(db.Model):
     time_enrollment = db.Column(db.DateTime, nullable=False, default=db.func.now())
     time_basemapversion = db.Column(db.DateTime())
     time_lastactivity = db.Column(db.DateTime())
-    wms_key = db.Column(db.String(50),nullable=True,default=generate_wms_key)
+    wms_key = db.Column(db.String(50),nullable=True,default=generate_random_key)
     campaign=db.relationship(Campaign,backref="memberships")
     user=db.relationship(User,backref="memberships")
+    def __repr__(self):
+        return "<CampaignUser User %s in Campaign %s>"%(self.user.username,self.campaign.name)
+        
     def update_lastactivity(self):
         self.time_lastactivity=db.func.now()
         db.session.commit()
@@ -505,20 +525,20 @@ class CampaignUsers(db.Model):
         if not self.time_lastactivity:
             return "No data uploaded yet"
         else:
-            delta=datetime.datetime.utcnow()-self.time_lastactivity
-            #total_seconds() is new in python 2.7
-            #seconds=delta.total_seconds()
-            seconds=delta.seconds+(delta.days*24*3600)
-            return self.time_lastactivity.strftime("%d %B at %H:%M")
-            if seconds < 60:
-                return "Less than one minute ago"
-            if seconds < 3600:
-                return "%d minutes ago"%(seconds//60)
-            if seconds < 86400:
-                return "%d hours ago"%(seconds//(60*60))
-            else:
-                #%a %d %B at %H:%M
-                return self.time_lastactivity.strftime("%d %B at %H:%M")
+            return date_to_text(self.time_lastactivity)
+#            #total_seconds() is new in python 2.7
+#            #seconds=delta.total_seconds()
+#            seconds=delta.seconds+(delta.days*24*3600)
+#            return self.time_lastactivity.strftime("%d %B at %H:%M")
+#            if seconds < 60:
+#                return "Less than one minute ago"
+#            if seconds < 3600:
+#                return "%d minutes ago"%(seconds//60)
+#            if seconds < 86400:
+#                return "%d hours ago"%(seconds//(60*60))
+#            else:
+#                #%a %d %B at %H:%M
+#                return self.time_lastactivity.strftime("%d %B at %H:%M")
     @property
     def last_post(self):
         """
@@ -529,8 +549,21 @@ class CampaignUsers(db.Model):
             return datetime.datetime(2000, 1, 1, 12, 00, 00)
         else:
             return last_feedback.comment_date
+            
+class CampaignUsersFavorites(db.Model):
+    """
+    Model which defines "favorites" for a user per project. Allows supervisors
+    to pin users as favorites, which then will show up on top of the list.
+    A bit like pinning in many mail applications. The user_id field defines
+    the user which is is pinned. If an entry exists then it is pinned, if no
+    entry exists then it is not pinned.
+    """
+    id = db.Column(db.Integer(), primary_key=True)
+    campaignusers_id = db.Column(db.Integer(), db.ForeignKey('campaign_users.id', ondelete='CASCADE'))
+    campaignusers=db.relationship(CampaignUsers,backref="favorites")
+    user_id = db.Column(db.Integer(), db.ForeignKey('user.id', ondelete='CASCADE'))
+   
 
-
-db_adapter = SQLAlchemyAdapter(db,  User)       # Select database adapter
-user_manager = UserManager(db_adapter, app)     # Init Flask-User and bind to app
+db_adapter = SQLAlchemyAdapter(db,  User)
+user_manager = UserManager(db_adapter, app)
 mail = Mail(app)

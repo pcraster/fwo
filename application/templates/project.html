@@ -30,7 +30,7 @@
 				{% else %}
 					<div class="panel-body">
 						<p>
-						The following students are enrolled in this fieldwork project:
+						The following students are enrolled in this fieldwork project. You can use the <i class="fa fa-thumb-tack"></i> button to pin your own students to keep them on top of your list.
 						</p>
 					</div>
 					<div class="panel-body" style="padding:0;">
@@ -42,6 +42,15 @@
 						{% for user in students %}
 						<tr>
 							<td>
+								{% if current_user.is_supervisor or current_user.is_admin %}
+									{% if user.id in favorite_user_ids %}
+										<a class="btn btn-success btn-sm" href="/projects/{{project.slug}}/?action=toggleflag&amp;user_id={{user.id}}" >
+									<i class="fa fa-thumb-tack"></i></a> 
+									{% else %}
+										<a class="btn btn-default btn-sm" href="/projects/{{project.slug}}/?action=toggleflag&amp;user_id={{user.id}}" >
+									<i class="fa fa-thumb-tack" ></i></a> 
+									{% endif %}
+								{% endif %}	
 								<code {% if user.id == current_user.id %}style="border:1px solid #C7254E;"{% endif %}>
 									{% if user.id == current_user.id %}
 									<i class="fa fa-user"></i>	
@@ -69,7 +78,9 @@
 										{% if membership.last_post > comments[user.username] %}
 									        <a class="btn btn-success btn-sm" href="/projects/{{project.slug}}/{{user.id}}/feedback" >
 									        <i class="fa fa-comments"></i></a>
-										{% endif %}									{% endif %}
+										{% endif %}
+					
+									{% endif %}
 									{% if membership.campaign_id == project.id and current_user.is_admin %}
 										{% if project.time_basemap > membership.time_basemap %}
 											<a class="btn btn-success btn-sm" href="/projects/{{project.slug}}/?action=reload&amp;user_id={{user.id}}" >

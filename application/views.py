@@ -1,7 +1,6 @@
 from application import app
 from .models import * 
 
-
 @app.route("/")
 @login_required
 def home():
@@ -122,12 +121,14 @@ def project(slug=None):
     If this view is requested by a student user, the user is redirected directly to the student's project page.
     """
     project=Campaign.query.filter_by(slug=slug).first_or_404()
-    #cu=CampaignUsers.query.filter(CampaignUsers.campaign_id==project.id,CampaignUsers.user_id==user.id).first()
+    
     #Set the users working on 
     current_user.current_project=project.id
     db.session.commit()
+    
 
     if current_user.is_admin or current_user.is_supervisor:
+        cu=CampaignUsers.query.filter(CampaignUsers.campaign_id==project.id,CampaignUsers.user_id==current_user.id).first()
         #
         #If user is an admin or supervisor, show the project overview page
         #
@@ -188,8 +189,25 @@ def project(slug=None):
         if request.method=="GET":
             if request.args.get("action","")=="reload" and request.args.get("user_id","") != "":
                 project.basemap_update(request.args.get("user_id",""))
+                return redirect(url_for('project',slug=project.slug))
             if request.args.get("action","")=="enroll" and request.args.get("user_id","") != "":
                 project.enroll_user(request.args.get("user_id",""))
+                return redirect(url_for('project',slug=project.slug))
+            if request.args.get("action","")=="toggleflag" and request.args.get("user_id","") != "":
+                try:
+                    user=User.query.filter(User.id==int(request.args.get("user_id",""))).first()
+                    cuf=CampaignUsersFavorites.query.filter(CampaignUsersFavorites.campaignusers_id==cu.id).filter(CampaignUsersFavorites.user_id==user.id).first()
+                    if cuf==None:
+                        #make a new entry
+                        cu.favorites.append(CampaignUsersFavorites(user_id=user.id))
+                        flash("Flagged user <code>%s</code>"%(user.username),"info")
+                    else:
+                        db.session.delete(cuf)
+                        flash("Unflagged user <code>%s</code>"%(user.username),"info")
+                    db.session.commit()
+                except Exception as e:
+                    flash("Something went wrong adding favorite: Hint: %s"%(e))
+                return redirect(url_for('project',slug=project.slug))
 
         #users=User.query.filter(User.campaigns.contains(project)).all()
         
@@ -197,17 +215,27 @@ def project(slug=None):
         role_supervisor=Role.query.filter(Role.name=='supervisor').first()
         role_admin=Role.query.filter(Role.name=='administrator').first()
         
-        #print role_admin
-        
-        #students=User.query.filter(User.roles.contains(student)).all()
-        #.filter(~User.roles.contains(role_supervisor))
-        students=User.query.filter(User.campaigns.contains(project)).filter(~User.roles.contains(role_supervisor)).filter(~User.roles.contains(role_admin)).all()
-        supervisors=User.query.filter(User.campaigns.contains(project)).filter(User.roles.contains(role_supervisor)|User.roles.contains(role_admin)).all()
+        students=User.query.\
+            filter(User.campaigns.contains(project)).\
+            filter(~User.roles.contains(role_supervisor)).\
+            filter(~User.roles.contains(role_admin))
+
+        supervisors=User.query.\
+            filter(User.campaigns.contains(project)).\
+            filter(User.roles.contains(role_supervisor)|User.roles.contains(role_admin)).all()
         
         enrollable_users=User.query.filter(~User.campaigns.contains(project)).all()
         backgroundlayers=BackgroundLayer.query.filter_by(campaign_id=project.id).all()
         comments=current_user.last_comment_for(campaign_id=project.id)
-        return render_template("project.html",project=project,supervisors=supervisors,students=students,enrollable_users=enrollable_users,backgroundlayers=backgroundlayers,comments=comments)
+        
+        favorite_user_ids=[cuf.user_id for cuf in cu.favorites]
+        
+        students_flagged=students.filter(User.id.in_(favorite_user_ids)).all()
+        students_notflagged=students.filter(~User.id.in_(favorite_user_ids)).all()
+        students_all=[]
+        students_all.extend(students_flagged)
+        students_all.extend(students_notflagged)
+        return render_template("project.html",project=project,supervisors=supervisors,students=students_all,enrollable_users=enrollable_users,backgroundlayers=backgroundlayers,comments=comments,favorite_user_ids=favorite_user_ids)
     else:
         #
         #Else forward the user to the user's fieldwork homepage
