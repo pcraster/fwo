@@ -230,8 +230,14 @@ def project(slug=None):
         
         favorite_user_ids=[cuf.user_id for cuf in cu.favorites]
         
-        students_flagged=students.filter(User.id.in_(favorite_user_ids)).all()
-        students_notflagged=students.filter(~User.id.in_(favorite_user_ids)).all()
+        students_flagged=[]
+        students_notflagged=[]
+        if len(favorite_user_ids)>0:
+            students_flagged=students.filter(User.id.in_(favorite_user_ids)).all()
+            students_notflagged=students.filter(~User.id.in_(favorite_user_ids)).all()
+        else:
+            students_notflagged=students.all()
+        
         students_all=[]
         students_all.extend(students_flagged)
         students_all.extend(students_notflagged)
@@ -466,7 +472,7 @@ def wmsproxy(wms_key=None):
     if(request.args.get("INFO_FORMAT","")=="application/json"):
         requestparams.update({'INFO_FORMAT':"text/xml"}) #always request xml from qgis server
     r=requests.get(app.config["WMS_SERVER_URL"],params=requestparams)
-    print "Proxying request to: "+r.url
+    #print "Proxying request to: "+r.url
     if r.status_code==200:
         if r.headers['content-type']=="text/xml" and ( request.args.get("FORMAT","")=="application/json" or request.args.get("INFO_FORMAT","")=="application/json"):
             #if json was requested and we received xml from the server, then convert it...
