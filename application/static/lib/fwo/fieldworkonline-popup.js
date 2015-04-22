@@ -56,7 +56,9 @@ var FWO=$.extend(FWO || {},{
 			/*
 			Close the feature info popups
 			*/
-			evt.preventDefault()
+			if(evt) {
+				evt.preventDefault()
+			}
 			var link=$(this)
 			var popup=$(FWO.popup.overlay.getElement())
 			link.blur()

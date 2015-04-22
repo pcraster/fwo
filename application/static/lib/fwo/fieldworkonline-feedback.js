@@ -48,6 +48,11 @@ var FWO=$.extend(FWO || {},{
             $("#reply-body").val("")
         },
         select_comment:function(comment_id) {
+            //close any popups
+            if(typeof FWO.popup!='undefined') {
+                FWO.popup.closefeatureinfo()
+            }
+
             comment=typeof comment_id=='undefined'?FWO.comments.data[0]:FWO.comments.get_comment_by_id(comment_id)
             detail=$('div#comment-detail')
             replies=detail.find('ul#comment-replies')
