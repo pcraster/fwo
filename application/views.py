@@ -228,7 +228,13 @@ def project(slug=None):
         backgroundlayers=BackgroundLayer.query.filter_by(campaign_id=project.id).all()
         comments=current_user.last_comment_for(campaign_id=project.id)
         
-        favorite_user_ids=[cuf.user_id for cuf in cu.favorites]
+        
+        #
+        #todo: fix if cu==None
+        #
+        favorite_user_ids=[]
+        if cu.favorites != None:
+            favorite_user_ids=[cuf.user_id for cuf in cu.favorites]
         
         students_flagged=[]
         students_notflagged=[]
