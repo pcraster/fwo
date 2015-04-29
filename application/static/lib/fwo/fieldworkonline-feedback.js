@@ -82,12 +82,12 @@ var FWO=$.extend(FWO || {},{
             background_layer_aerial:new ol.layer.Tile({
                 visible: false,
                 preload: Infinity,
-                source: new ol.source.BingMaps({key: 'ApEqbYdQJSwOJ-KqrCQsI1AAouPQHkng2AjdJsQjLjK55P0yNQc-eEfOLUPUAAMt', imagerySet: 'Aerial'})
+                source: new ol.source.BingMaps({key: window.BINGMAPS_KEY, imagerySet: 'Aerial'})
             }),
             background_layer_road:new ol.layer.Tile({
                 visible: false,
                 preload: Infinity,
-                source: new ol.source.BingMaps({key: 'ApEqbYdQJSwOJ-KqrCQsI1AAouPQHkng2AjdJsQjLjK55P0yNQc-eEfOLUPUAAMt', imagerySet: 'Road'})
+                source: new ol.source.BingMaps({key: window.BINGMAPS_KEY, imagerySet: 'Road'})
             }),
             background_wms_layer:new ol.layer.Tile({
                 visible:false,

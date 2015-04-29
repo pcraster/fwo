@@ -44,7 +44,7 @@ var FWO=$.extend(FWO || {},{
 				visible: true,
 				preload: Infinity,
 				source: new ol.source.BingMaps({
-					key: 'ApEqbYdQJSwOJ-KqrCQsI1AAouPQHkng2AjdJsQjLjK55P0yNQc-eEfOLUPUAAMt',
+					key: window.BINGMAPS_KEY,
 					imagerySet: 'Aerial'
 				})
 			}),
@@ -52,7 +52,7 @@ var FWO=$.extend(FWO || {},{
 				visible: true,
 				preload: Infinity,
 				source: new ol.source.BingMaps({
-					key: 'ApEqbYdQJSwOJ-KqrCQsI1AAouPQHkng2AjdJsQjLjK55P0yNQc-eEfOLUPUAAMt',
+					key: window.BINGMAPS_KEY,
 					imagerySet: 'Road'
 				})
 			}),

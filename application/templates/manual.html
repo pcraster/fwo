@@ -6,9 +6,22 @@
 
 
 <div class="row">
-	<div class="col-md-12 col-sm-12">
+	<div class="col-md-2 col-sm-2">
+	</div>
+	<div class="col-md-8 col-sm-8">
+		<h2 style="text-align:center;">Fieldwork Online Manual</h2>
 		<div class="well well-sm">
-		<h2>Fieldwork Online Manual</h2>
+			<p>
+		
+				The Fieldwork Online web application is used during fieldwork practicals to help students and their supervisors to:
+			</p>
+			<ul>
+				<li>Access and investigate existing datasets about the study area</li>
+				<li>Share and archive data collected in the field</li>
+				<li>Communicate, ask questions, and provide georeferenced feedback</li>
+			</ul>
+		</div>
+		<div class="well well-sm">
 			<h4>General information</h4>
 			<ul>
 				<li><a href="#">Notes on being a supervisor</a></li>
@@ -29,10 +42,107 @@
 				<li><a href="#">Accessing data in a Desktop GIS with web services</a></li>
 			</ul>
 		</div>
-		<h3>Notes on being a supervisor</h3>
+		<h3 id="topic-supervisor-notes">Notes on being a supervisor</h3>
 		<p>
-			An up-to-date manual and user documentation will be posted here shortly.
+			Supervisors have special privileges in the Fieldwork Online application. Their home view (after logging in) consists of a project overview where all the workspaces of enrolled students, as well as other supervisors, can be viewed (Figure 1). It is also possible for supervisors to enrol students manually. Students can create an account  and enroll themselves in a fieldwork practical with an invitation code, without any intervention from staff. All that is required is to provide students with the invitation code found on the home screen of the relevant fieldwork project.
 		</p>
+		<div style="text-align:center;padding:20px 0px;">
+			<img src="/static/gfx/manual/supervisor_overview.png" style="width:70%;"><br/>
+			<small><strong>Figure 1. The home view of supervisors</strong></small>
+		</div>
+		<h3 id="topic-workspaces">Workspaces</h3>
+		<p>
+			Once a student or supervisor has been enrolled in a fieldwork project, a personal workspace will be made available to them. This consists of a web map with background layers related to the project, some base layers which show the fieldwork area, and pages which let you add data and leave comments or feedback on locations in the map. When a student logs in they will be shown their workspace (Figure 2). Supervisors can view individual student's workspaces by clicking the “View workspaces” link on their home view (Figure 1).
+		</p>
+		<div style="text-align:center;padding:20px 0px;">
+			<img src="/static/gfx/manual/user_workspace.png" style="width:70%;"><br/>
+			<small><strong>Figure 2. A users' workspace</strong></small>
+		</div>
+		<p>
+			
+
+			The side menu in the map view shows uploaded data points in the “Spreadsheets” folder, and the map can be clicked to query features at that location or to leave a comment. Comments can be posted by clicking the Leave a comment link in the popup. 
+		</p>
+
+		<h3 id="topic-adding-point-data">Adding point data using a spreadsheet (Data Menu)</h3>
+		<p>
+			Users can only upload data to their own workspaces on the page under the Data menu. To simplify this process and to allow maximum flexibility, data is uploaded as a spreadsheet in Excel (xls or xlsx) format. Defining the structure and type of data to collect is arbitrary and up to whoever collects the data, as long as some simple but important guidelines are followed:
+		</p>
+		<ul>
+			<li>The first row is reserved for attribute headers, or the properties of your data. Attributes can be things like “color”, “size”, “description”, or “photo” if you intend to add a photograph taken at that location. You are free to choose your own names or even add columns which have been derived or calculated from other fields.</li>
+			<li>You must use one column for the x-coordinate and one column for the y-coordinate. Make sure that these columns can be recognised by using a header like “x” and “y” or “lat” and “lng”.</li>
+			<li>The name of the sheet defines the name of the data layer. Make sure to give it a clear and concise name (so not “Sheet1”). In this way, you can use multiple sheets in your Excel document and upload them all at once. </li>
+		</ul>
+
+		<p>
+			An example of a spreadsheet that you could upload to your workspace is shown in Figure 3. There is some more advanced functionality available as well. For example, if your points are recorded in a projected coordinate system, you must specify the EPSG code of the coordinate system in brackets after your header name, otherwise the system will not know where on the Earth your points are located.  Adding filenames is also an option, such as the “Sketch” and “Photo” attributes of the spreadsheet in Figure 3. If you do so, make sure to upload the actual files as well so they can be viewed directly in the map.
+		</p>
+		<div style="text-align:center;padding:20px 0px;">
+			<img src="/static/gfx/manual/spreadsheet_formatting.png" style="width:70%;"><br/>
+			<small><strong>Figure 3. Formatting of spreadsheets with point data</strong></small>
+		</div>
+		<h3 id="topic-adding-other-data">Adding photos and other files or documents (Data Menu)</h3>
+		<p>
+			Besides spreadsheets with point data, other types of documents such as photos or PDFs can also be uploaded on the Data page. They will be stored and available under the “Overview of uploaded files.” Any filenames which have been entered in the spreadsheets will link to these files, so if you've added a reference to a photo in your spreadsheet, make sure to upload the photo file under the Data menu as well. Photo's are automatically resized before uploading to save bandwidth, be sure to keep an original copy of your photograph for use in reports.
+		</p>
+		<h3 id="topic-viewing-background-layers">Viewing background layers (Maps Menu)</h3>
+		<p>
+			On the maps page the “Background Layers” in the sidebar allow users to view different data layers as a background. The backgrounds, such a topographic map, aerial photographs, or satellite imagery, is configured on a per-project basis by the fieldwork online administrators. 
+		</p>
+		<h3 id="topic-leaving-comments">Leaving comments and feedback (Maps)</h3>
+		<p>
+			The Fieldwork Online website can be used for communication between students and supervisors. Comments, feedback and questions with an explicit spatial component can be asked via the map interface. This functionality is not intended to replace e-mail or other types of communication between a specific student and supervisors, but rather to make it easier to record and discuss issues related to locations. A comment can be added by clicking somewhere on the map. In the popup menu which opens select  Leave a comment (See Figure 2), and a snapshot of the map as you've selected it will be stored alongside your comment as shown in Figure 4.
+		</p>
+		<div style="text-align:center;padding:20px 0px;">
+			<img src="/static/gfx/manual/posting_a_comment.png" style="width:80%;"><br/>
+			<small><strong>Figure 4. Posting a comment</strong></small>
+		</div>
+		<p>
+			Students who have questions about a specific location or point may find this useful, as well as supervisors who wish to make a suggestion or direct their students to a particular location. An overview of the feedback and comments can be viewed under the Feedback and Comments menu (Figure 5). It is also possible to post responses here to questions, or for students to reply to feedback by supervisors.
+		</p>
+		<div style="text-align:center;padding:20px 0px;">
+			<img src="/static/gfx/manual/feedback_responding.png" style="width:80%;"><br/>
+			<small><strong>Figure 5. Responding to comments or feedback</strong></small>
+		</div>
+
+		<h3 id="topic-web-services">Accessing the data in a desktop GIS (Web Services Menu)</h3>
+		<p>
+			The data points which have been uploaded into a user's workspace can also be viewed in a desktop GIS system such as QGIS or ArcGIS. A GIS program allow you to work locally on the data and offer more options for spatial analysis and data visualization. On the Web Services menu is a link for the WMS (Web Map Services) and WFS (Web Feature Services) of the data in the workspace. WFS serves data as vector features whereas WMS serves data as a ready made and colored map. Because vector features allow for better querying and visualization of the data, it is advisable to use WFS to access data in the workspace.
+		</p>
+		<p>
+			To add the data to a project in QGIS Desktop, use the Layer > Add Layer > Add WFS Layer menu. Click New to create a new WFS connection and enter the URL found on the web services page as in Figure 6.
+		</p>
+		<div style="text-align:center;padding:20px 0px;">
+			<img src="/static/gfx/manual/qgis_wfs_connection.png" style="width:40%;"><br/>
+			<small><strong>Figure 6. Creating a new WFS connection in QGIS</strong></small>
+		</div>
+
+		<p>
+			Click OK and then Connect to view the available layers. Select a layer and click Add to add them to your project (Figure 7). 
+		</p>
+
+		<div style="text-align:center;padding:20px 0px;">
+			<img src="/static/gfx/manual/qgis_wfs_layers.png" style="width:50%;"><br/>
+			<small><strong>Figure 7. Listing the layers of a WFS conenction and loading the data in QGIS</strong></small>
+		</div>
+
+		<p>
+			The feature data includes all the attributes values that have been created in the spreadsheet, as can be seen in the WFS attribute table (Figure 8).
+		</p>
+
+		<div style="text-align:center;padding:20px 0px;">
+			<img src="/static/gfx/manual/qgis_attribute_table.png" style="width:80%;"><br/>
+			<small><strong>Figure 8. Attribute table of a vector layer in QGIS</strong></small>
+		</div>
+
+		<p>
+			Further styling can be done in the same way as if you loaded all the vector data directly from a shapefile (Figure 9).
+		</p>
+		
+		<div style="text-align:center;padding:20px 0px;">
+			<img src="/static/gfx/manual/data_in_qgis.png" style="width:80%;"><br/>
+			<small><strong>Figure 9. Visualizing the data from a workspace in QGIS</strong></small>
+		</div>
 
 	</div>
 </div>

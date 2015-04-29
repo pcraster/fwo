@@ -195,16 +195,19 @@ def project(slug=None):
                 return redirect(url_for('project',slug=project.slug))
             if request.args.get("action","")=="toggleflag" and request.args.get("user_id","") != "":
                 try:
-                    user=User.query.filter(User.id==int(request.args.get("user_id",""))).first()
-                    cuf=CampaignUsersFavorites.query.filter(CampaignUsersFavorites.campaignusers_id==cu.id).filter(CampaignUsersFavorites.user_id==user.id).first()
-                    if cuf==None:
-                        #make a new entry
-                        cu.favorites.append(CampaignUsersFavorites(user_id=user.id))
-                        flash("Flagged user <code>%s</code>"%(user.username),"info")
+                    if cu==None:
+                        flash("You are not enrolled in this project, therefore it is not possible to flag users.","error")
                     else:
-                        db.session.delete(cuf)
-                        flash("Unflagged user <code>%s</code>"%(user.username),"info")
-                    db.session.commit()
+                        user=User.query.filter(User.id==int(request.args.get("user_id",""))).first()
+                        cuf=CampaignUsersFavorites.query.filter(CampaignUsersFavorites.campaignusers_id==cu.id).filter(CampaignUsersFavorites.user_id==user.id).first()
+                        if cuf==None:
+                            #make a new entry
+                            cu.favorites.append(CampaignUsersFavorites(user_id=user.id))
+                            flash("Flagged user <code>%s</code>"%(user.username),"info")
+                        else:
+                            db.session.delete(cuf)
+                            flash("Unflagged user <code>%s</code>"%(user.username),"info")
+                        db.session.commit()
                 except Exception as e:
                     flash("Something went wrong adding favorite: Hint: %s"%(e))
                 return redirect(url_for('project',slug=project.slug))
@@ -233,7 +236,7 @@ def project(slug=None):
         #todo: fix if cu==None
         #
         favorite_user_ids=[]
-        if cu.favorites != None:
+        if cu != None:
             favorite_user_ids=[cuf.user_id for cuf in cu.favorites]
         
         students_flagged=[]

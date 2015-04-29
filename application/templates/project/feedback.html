@@ -27,6 +27,7 @@
 {% block footjs %}
 	<script type="text/javascript">
 		WMS_URL='/wms/{{wms_key}}';
+        BINGMAPS_KEY='{{config["BINGMAPS_KEY"]}}';
         BACKGROUND_LAYERS={
             url: '{{config['MAPSERVER_URL']}}',
             params: {
@@ -43,8 +44,6 @@
     <script type="text/javascript" src="/static/lib/fwo/fieldworkonline-popup.js"></script>
     <script type="text/javascript">
         $(function() {
-            console.log("trying to init with")
-            console.log(FWO.comments.map.obj)
             FWO.popup.init(FWO.comments.map.obj)
         })
     </script>
