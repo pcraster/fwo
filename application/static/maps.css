@@ -130,6 +130,14 @@
         overflow-y:scroll;
         padding-right:6px;
       }
+
+      table#popup-attribute-table tr td {
+        max-width: 100px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
       a#popup-closer {
         float:right;
         padding-top:1px;
