@@ -236,15 +236,15 @@ def excel_parser(filename,spatialite_file):
             cur.execute("SELECT DiscardGeometryColumn('%s','geom');"%(tablename))
             conn.commit()
 
-            cur.execute("DROP TABLE IF EXISTS %s;"%(tablename))
+            cur.execute("DROP TABLE IF EXISTS '%s';"%(tablename))
             conn.commit()
 
             cur.execute("""
                 CREATE TABLE %s (
-                    fwo_id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                    'fwo_id' INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
                     %s
                 );
-            """%(tablename,", ".join(["%s %s"%(h["header"],h["datatype"]) for h in header_list])))
+            """%(tablename,", ".join(["'%s' %s"%(h["header"],h["datatype"]) for h in header_list])))
             conn.commit()
 
 
@@ -264,7 +264,7 @@ def excel_parser(filename,spatialite_file):
                 try:
                     point=Point(lon,lat) #will raise an exception if lon,lat are None or some other incompatible value
                     attr_values=[header["attribute_values"][n] for header in header_list]
-                    attr_names=",".join([header["header"] for header in header_list])
+                    attr_names=",".join(["'"+header["header"]+"'" for header in header_list])
                     point_sql="INSERT INTO %s (%s,geom) VALUES (%s,GeomFromText('%s',%s))"%(tablename,attr_names,",".join("?"*len(attr_values)),point.wkt,epsg)
                     cur.execute(point_sql,attr_values)
                     num_points+=1

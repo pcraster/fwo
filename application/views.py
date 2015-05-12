@@ -268,6 +268,8 @@ def project(slug=None):
 def project_overview(slug=None,user_id=None):
     project=Campaign.query.filter_by(slug=slug).first_or_404()
     user=User.query.filter_by(id=user_id).first_or_404()
+    if (user.id != current_user.id) and (not current_user.is_supervisor) and (not current_user.is_admin):
+        abort(403)
     return render_template("project/overview.html",project=project,user=user)
 
 @app.route("/projects/<slug>/<user_id>/data",methods=["GET"])
@@ -286,7 +288,8 @@ def project_data(slug,user_id):
 def project_maps(slug,user_id):
     project=Campaign.query.filter_by(slug=slug).first_or_404()
     user=User.query.filter_by(id=user_id).first_or_404()
-    
+    if (user.id != current_user.id) and (not current_user.is_supervisor) and (not current_user.is_admin):
+        abort(403)
     cu=CampaignUsers.query.filter(CampaignUsers.campaign_id==project.id,CampaignUsers.user_id==user.id).first()
     if not project.basemap:
         flash("No basemap has been uploaded by the project administrator yet.","info")
@@ -301,9 +304,9 @@ def project_maps(slug,user_id):
 def project_feedback(slug,user_id):
     project=Campaign.query.filter_by(slug=slug).first_or_404()
     user=User.query.filter_by(id=user_id).first_or_404()
-    cu=CampaignUsers.query.filter(CampaignUsers.campaign_id==project.id,CampaignUsers.user_id==user.id).first()
     if (user.id != current_user.id) and (not current_user.is_supervisor) and (not current_user.is_admin):
-        return render_template("denied.html")
+        abort(403)
+    cu=CampaignUsers.query.filter(CampaignUsers.campaign_id==project.id,CampaignUsers.user_id==user.id).first()
     if request.method=="POST":
         #Posting some feedback/comment or a reply to one
         try:
@@ -349,6 +352,8 @@ def project_feedback(slug,user_id):
 def project_feedback_json(slug,user_id):
     project=Campaign.query.filter_by(slug=slug).first_or_404()
     user=User.query.filter_by(id=user_id).first_or_404()
+    if (user.id != current_user.id) and (not current_user.is_supervisor) and (not current_user.is_admin):
+        abort(403)
     cu=CampaignUsers.query.filter(CampaignUsers.campaign_id==project.id,CampaignUsers.user_id==user.id).first()
     if (user.id != current_user.id) and (not current_user.is_supervisor) and (not current_user.is_admin):
         return render_template("denied.html")
@@ -385,7 +390,7 @@ def project_collaborate(slug,user_id):
     project=Campaign.query.filter_by(slug=slug).first_or_404()
     user=User.query.filter_by(id=user_id).first_or_404()
     if (user.id != current_user.id) and (not current_user.is_supervisor) and (not current_user.is_admin):
-        return render_template("denied.html")
+        abort(403)
 
     cu=CampaignUsers.query.filter(CampaignUsers.campaign_id==project.id,CampaignUsers.user_id==user.id).first()
     return render_template("project/collaborate.html",project=project,user=user,cu=cu)
@@ -400,6 +405,8 @@ def project_collaborate(slug,user_id):
 def project_file(slug,user_id):
     project=Campaign.query.filter_by(slug=slug).first_or_404()
     user=User.query.filter_by(id=user_id).first_or_404()
+    if (user.id != current_user.id) and (not current_user.is_supervisor) and (not current_user.is_admin):
+        abort(403)
     cu=CampaignUsers.query.filter(CampaignUsers.campaign_id==project.id,CampaignUsers.user_id==user.id).first()
     userdata=project.userdata(user.id)
     if request.method=="HEAD" or request.method=="GET":
