@@ -193,6 +193,9 @@ def project(slug=None):
             if request.args.get("action","")=="enroll" and request.args.get("user_id","") != "":
                 project.enroll_user(request.args.get("user_id",""))
                 return redirect(url_for('project',slug=project.slug))
+            if request.args.get("action","")=="deroll" and request.args.get("user_id","") != "":
+                project.deroll_user(request.args.get("user_id",""))
+                return redirect(url_for('project',slug=project.slug))
             if request.args.get("action","")=="toggleflag" and request.args.get("user_id","") != "":
                 try:
                     if cu==None:

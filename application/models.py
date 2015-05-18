@@ -416,6 +416,26 @@ class Campaign(db.Model):
         except Exception as e:
             flash("Failed to enroll user <code>%s</code> in the fieldwork project %s. Hint: %s"%(user.username,self.name,e),"error")
             return False
+    def deroll_user(self,user_id):
+        """
+        Remove enrollment of a user in a project. This does preserve the user's
+        data directory.
+        """
+        try:
+            user=User.query.filter(User.id==int(user_id)).first()
+            enrollment=CampaignUsers.query.filter(CampaignUsers.campaign_id==self.id,CampaignUsers.user_id==user.id).all()
+            if enrollment==None:
+                flash("User was not enrolled in this project.","error")
+            else:
+                for e in enrollment:
+                    db.session.delete(e)
+                db.session.commit()
+                flash("Removed enrollemnt","ok")
+                return True
+        except Exception as e:
+            flash("An error occurred! Hint: %s"%(e),"error")
+            return False
+            
     def features(self,user_id):
         """
         Returns an overview of the feature data which has been uploaded by the user (via spreadsheets) and is saved in the "features.sqlite" file in the userdata directory.
