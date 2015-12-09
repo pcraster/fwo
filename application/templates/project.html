@@ -239,7 +239,7 @@
 							When uploading a new background layers please keep the following issues in mind:
 						</div>
 						<ul>
-							<li>At the moment it is only possible to upload GeoTIFF rasters with 3 bands representing RGB (Red, Green, Blue) colors! For examples of some good files, check out the "demo_backgroundlayers" directory in the "test" directory of the code repository. </li>
+							<li>Ensure that the uploaded file is a GeoTIFF file, has exactly 3 bands (RGB colors), and is projected in the EPSG:3857 (Pseudo-Mercator) projection. For examples of some good files, check out the "demo_backgroundlayers" directory in the "test" directory of the code repository. </li>
 							<li>If you upload a background map with the same name as another one in the project it will be overwritten without warning!</li>
 							<li>The available background maps are the same for every user in the fieldwork project.</li>
 							<li>Be sure to apply JPEG compression and overviews to your raster files.This will result in much better performance of the web maps.</li>

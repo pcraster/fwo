@@ -19,6 +19,8 @@ import datetime
 #import time
 import hashlib
 
+from osgeo import gdal, osr
+
 from geoalchemy2 import Geometry
 from geoalchemy2.shape import to_shape#,from_shape
 from geoalchemy2.elements import WKTElement#, WKBElement
@@ -577,56 +579,6 @@ class Campaign(db.Model):
         except Exception as e:
             flash("An error occurred! Hint: %s"%(e),"error")
             return False
-            
-#    def features(self,user_id):
-#        """
-#        Returns an overview of the feature data which has been uploaded by the user (via spreadsheets) and is saved in the "features.sqlite" file in the userdata directory.
-#        """
-#        features=[]
-#        try:
-#            from pyspatialite import dbapi2 as spatialite
-#            conn = spatialite.connect(self.features_database(user_id))
-#            cur = conn.cursor()
-#            rs = cur.execute("SELECT name,title,features,description FROM fwo_metadata")
-#            for row in rs: 
-#                features.append(row)
-#            return features
-#        except Exception as e:
-#            flash("No features have been uploaded yet by this user.","info")
-#            return []
-#            
-#    def features_database(self,user_id):
-#        """
-#        Returns the full path to the features.sqlite file, which contains the feature data that has been uploaded by the user. When no data has been uploaded yet this file does not exist.
-#        """
-#        return os.path.join(self.userdata(user_id),"map","features.sqlite")
-#        
-#    @property
-#    def background_layers(self):
-#        """
-#        Returns a list of tif tiles in the project's backgroundlayers directory.
-#        
-#        Todo: 
-#        
-#        * Find out if/where this is used and if it's still the most appropriate
-#          method to check for backgroundlayers in a project. Shouldn't they be
-#          referenced in the data model and accessible like:
-#          
-#          campaign.background_layers
-#          
-#          We also want to use the BackgroundLayer model for these things.
-#        """
-#        file_list=[]
-#        l=BackgroundLayer.query.filter_by(campaign_id=self.id).all()
-#        for layer in l:
-#            try:
-#                file_list.append({
-#                    'name':layer.name,
-#                    'file':layer.filename
-#                    })
-#            except:
-#                pass
-#        return file_list
         
     @property
     def background_layer_default(self):
@@ -665,7 +617,7 @@ class Campaign(db.Model):
             with open(self.background_layers_mapfile, 'w') as f:
                 f.write(backgroundlayers_mapfile)
         except Exception as e:
-            flash("Could not update <code>backgroundlayers.map</code> in the %s project."%(self.name), "error")
+            flash("Could not update <code>backgroundlayers.map</code> in the %s project. Hint: %s"%(self.name, e), "error")
             return False
         else:
             return True
@@ -739,22 +691,8 @@ class CampaignUsers(db.Model):
           when they leave a comment? Hmm... Perhaps it is called after data
           or files are uploaded.
         """
-        self.time_lastactivity=db.func.now()
+        self.time_lastactivity = db.func.now()
         db.session.commit()
-        
-#    @property 
-#    def wms_url(self):
-#        if self.wms_key:
-#            return "http://%s/wms/%s"%(request.host,self.wms_key)
-#        else:
-#            return None
-            
-#    @property
-#    def time_basemap(self):
-#        if self.time_basemapversion:
-#            return self.time_basemapversion
-#        else:
-#            return datetime.datetime(2000, 1, 1, 12, 00, 00)
             
     @property
     def text_lastactivity(self):
@@ -826,11 +764,35 @@ class BackgroundLayer(db.Model):
         Creates a new BackgroundLayer instance by passing it the filename of
         the uploaded file. 
         """
+        #Set some basic values
         self.filename = filename
         (head,tail) = os.path.split(filename)
         self.name = tail.split(".")[0]
         self.description = "this is a background layer"
-    
+        
+        #Verify that the file is in fact a gdal raster
+        ds = gdal.Open(self.filename)
+        if ds is None:
+            raise Exception("Unable to open the input file with gdal.Open()")
+        else:
+            #Check that the file is a geotiff file
+            if ds.GetDriver().ShortName != 'GTiff':
+                raise Exception("Dataset is not a GeoTIFF file.")
+            #With three bands
+            if ds.RasterCount != 3:
+                raise Exception("Dataset does not have exactly 3 bands.")
+                
+            #And try and obtain the srs of the uploaded file in a try statement 
+            #because there are various things that can go wrong here. 
+            try:
+                srs = osr.SpatialReference(wkt=ds.GetProjection())
+                srs.Fixup()
+                srs.AutoIdentifyEPSG()
+                srid = int(srs.GetAuthorityCode(None))
+                assert srid == 3857
+            except:
+                raise Exception("Dataset could not be identified as being projected in a pseudomercator projection with EPSG:3857.")
+                
     @property
     def label(self):
         return self.description
