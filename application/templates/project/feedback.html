@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block headcss %}
-    <link rel="stylesheet" href="/static/css/ol.css" type="text/css">
-    <link rel="stylesheet" href="/static/maps.css" type="text/css">
+    <link rel="stylesheet" href="/static/lib/openlayers/ol.css" type="text/css">
+    <link rel="stylesheet" href="/static/lib/fwo/maps.css" type="text/css">
     <style>
     	ul#feedback-list small {
     		color:#888;
@@ -25,7 +25,7 @@
     </style>
 {% endblock %}
 {% block footjs %}
-	<script type="text/javascript" src="/static/js/ol.js"></script>
+	<script type="text/javascript" src="/static/lib/openlayers/ol.js"></script>
     <script type="text/javascript" src="/static/lib/fwo/fieldworkonline-map.js"></script>
     <script type="text/javascript" src="/static/lib/fwo/fieldworkonline-popup.js"></script>
     <script type="text/javascript">
