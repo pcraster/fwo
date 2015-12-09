@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+{% block headcss %}
+    <link rel="stylesheet" href="/static/css/ol.css" type="text/css">
+    <link rel="stylesheet" href="/static/maps.css" type="text/css">
+    <style>
+    	ul#feedback-list small {
+    		color:#888;
+    	}
+    	ul#feedback-list p.comment-body {
+    		margin:0;
+    	}
+        p#comment-body {
+            margin-bottom:0;
+        }
+        p.reply-body {
+            padding-top:5px;padding-left:22px;padding-right:150px;
+        }
+        ul#comment-replies {
+            margin-bottom:0;
+        }
+        ul#comment-replies li {
+            margin-bottom:0;
+            padding-bottom:0;
+        }
+    </style>
+{% endblock %}
+{% block footjs %}
+	<script type="text/javascript">
+		WMS_URL='/wms/{{wms_key}}';
+        BINGMAPS_KEY='{{config["BINGMAPS_KEY"]}}';
+        BACKGROUND_LAYERS={
+            url: '{{config['MAPSERVER_URL']}}',
+            params: {
+              'LAYERS':'{{project.background_layer_default}}',
+              'TILED': true,
+              'MAP':'{{project.background_layers_mapfile}}',
+              'FORMAT':'image/jpeg' //image/png; mode=8bit
+            },
+            serverType: 'mapserver'
+        };
+	</script>
+	<script type="text/javascript" src="/static/js/ol.js"></script>
+	<script type="text/javascript" src="/static/lib/fwo/fieldworkonline-feedback.js"></script>
+    <script type="text/javascript" src="/static/lib/fwo/fieldworkonline-popup.js"></script>
+    <script type="text/javascript">
+        $(function() {
+            FWO.popup.init(FWO.comments.map.obj)
+        })
+    </script>
+{% endblock %}
+{% block content %}
+	<!--<h2>Project feedback</h2>-->
+&nbsp;
+	<div class="row">
+		<div class="col-md-4 col-sm-4">
+			<div class="panel panel-default">
+				<div class="panel-heading">
+					<strong>Overview of recent comments and feedback</strong>
+				</div>
+				
+				<ul class="list-group" id="feedback-list" style="height:340px;overflow-y:scroll;" >
+                        <!--filled dynamically-->
+				</ul>
+				
+			</div>
+		</div>
+		<div class="col-md-8 col-sm-8">
+			<div class="panel panel-default" >
+				<div class="panel-heading">
+					<strong>Map</strong>
+				</div>
+				<div class="panel-body" id="commentmap"  style="padding:0;margin:0;height:340px;">
+
+				</div>
+			</div>
+		</div>
+	</div>
+	<div class="row">
+        <div class="col-md-12 col-sm-12">
+		<div class="panel panel-default" id="comment-detail">
+
+                <div class="panel-heading">
+                    <strong><i class="fa fa-quote-left"></i> Original comment by <span id="comment-by"></span></strong> posted <span id="comment-age"></span>
+                </div>
+                
+                <div class="panel-body" id="feedback-detail">
+                    <div class="comment-original">
+                        <p id="comment-body"></p>
+                    </div>
+                    <ul class="list-group" id="comment-replies" >
+                        <!--replies are filled dynamically-->
+                    </ul>
+
+                </div>
+                
+                <div class="panel-body" id="feedback-reply" style="background-color:#f5f5f5;border-top:1px solid #ddd;">
+                    <form id="comment-reply-form" action="">
+                        <input name="comment_parent" id="comment-parent" type="hidden" value="">
+                        <div class="form-group" style="margin-top:5px;">
+                        <!--<label for="exampleInputEmail1">Comments or feedback</label>-->
+                        <textarea name="comment_body" class="form-control" id="reply-body" placeholder=""></textarea>
+                        </div>
+                        <div class="form-group" style="margin-top:5px;text-align:left;" >
+                        <button type="submit" class="btn btn-primary"><i class="fa fa-check"></i> Post a reply</button>
+                        </div>
+                    </form>
+                </div>
+        </div>
+</div>
+
+
+
+
+          <div class="col-md-9 col-sm-9" style="padding-right:0px;padding-left:0;">
+            <div id="map" class="map">
+              <div id="popup" class="ol-popup">
+                <div id="popup-header" style="height:20px;">
+                  <form>
+                    <input type="checkbox" id="checkbox-identify-toplayer-only">
+                    <a href="#" id="identify-toplayer-only">Show hits on topmost layer only</a>
+                    <a href="#" id="popup-closer" class="ol-popup-closer">Close popup</a>
+                  </form>
+                </div>
+                <div id="popup-content"></div>
+              </div>
+            </div>
+          </div>
+
+        {% include "photomodal.html" %}
+{% endblock %}
+
+

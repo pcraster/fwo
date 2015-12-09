@@ -11,8 +11,7 @@ env.code_dir='/var/www/fieldwork_online'
 env.data_dir = '/var/wwwdata/fieldwork_online'
 env.as_user = 'apache'
 
-def prepare_deploy():
-	local("./manage.py test")
+
 
 def deploy():
 	#

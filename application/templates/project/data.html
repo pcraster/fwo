@@ -54,35 +54,37 @@
 	</div>
 </div>
 
-<div class="panel panel-default">
-	<div class="panel-heading">
-		<strong>Overview of uploaded feature data layers</strong>
-	</div>
-	{% if not features %}
-		<div class="panel-body">
-			<p>No points have been uploaded yet.</p>
+
+	<div class="panel panel-default">
+		<div class="panel-heading">
+			<strong>Observations database</strong>
 		</div>
-	{% else %}
-		<div class="panel-body" style="padding:0;">
-			<table class="table">
-			<tr>
-				<td style="border:0;padding-left:15px;">Layer Name</td>
-				<td style="border:0">Description</td>
-				<td style="border:0">Attributes</td>
-			</tr>
-			{% for row in features %}
+		{% if not observationlayers %}
+			<div class="panel-body">
+				<p>No observations have been uploaded yet.</p>
+			</div>
+		{% else %}
+			<div class="panel-body" style="padding:0;">
+				<table class="table">
 				<tr>
-					<td style="padding-left:15px;">
-					<nobr><i class="fa fa-database"></i> <code>{{row[0]}}</code> ({{row[2]}} points)</nobr>
-					</td>
-					<td>{{row[1]}}</td>
-					<td>{{row[3]|safe}}</td>
+					<td style="border:0;padding-left:15px;">Layer name</td>
+					<td style="border:0"></td>
+					<td style="border:0"></td>
 				</tr>
-			{% endfor %}
-			</table>
-		</div>
-	{% endif %}
-</div>
+	                {% for observationlayer in observationlayers %}
+					<tr>
+						<td style="padding-left:15px;">
+						<nobr><i class="fa fa-database"></i> <code>{{observationlayer.name}}</code> ({{observationlayer.num_observations}} observations) <a href="{{ url_for('project_data_layer', slug=project.slug, user_id=user.id, safe_name=observationlayer.safe_name) }}">View as GeoJSON</a></nobr>
+						</td>
+						<td></td>
+						<td style="width:100%"></td>
+					</tr>
+				{% endfor %}
+				</table>
+			</div>
+		{% endif %}
+	</div>
+
 
 <div class="panel panel-default">
 	<div class="panel-heading">

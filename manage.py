@@ -15,14 +15,6 @@ def random_password():
 	return ''.join(random.choice("abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789") for _ in range(8))
 
 @manager.command
-def test():
-	"""
-	Run tests, of which there are none at the moment...
-	"""
-	print " * Run tests here... "
-	print app.config
-
-@manager.command
 def createdb():
 	"""
 	Create the database.
@@ -92,6 +84,7 @@ def initdb():
 
 	db.session.add_all([admin,supervisor,student])
 	db.session.commit()
+
 
 	campaign = Campaign(name="Demo Project",description="A fieldwork campaign for demonstration purposes. This project showcases basic functionality and lets you try out the interface.")
 	campaign.users.append(admin)

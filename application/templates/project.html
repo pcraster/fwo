@@ -81,15 +81,7 @@
 										{% endif %}
 					
 									{% endif %}
-									{% if membership.campaign_id == project.id and current_user.is_admin %}
-										{% if project.time_basemap > membership.time_basemap %}
-											<a class="btn btn-success btn-sm" href="/projects/{{project.slug}}/?action=reload&amp;user_id={{user.id}}" >
-											<i class="fa fa-refresh  fa-fw"></i> Update basemap</a> 
-										{% else %}
-											<a class="btn btn-default btn-sm" href="/projects/{{project.slug}}/?action=reload&amp;user_id={{user.id}}">
-											<i class="fa fa-refresh fa-fw"></i> Update basemap</a> 
-										{% endif %}
-									{% endif %}
+
 								{% endfor %}
 								<a class="btn btn-primary btn-sm" href="/projects/{{project.slug}}/{{user.id}}/maps"><i class="fa fa-search"></i> View workspace</a>
 							</td>
@@ -150,42 +142,10 @@
 								{{user.email}}
 							</td>
 							<td>
-							{% for membership in user.memberships %}
-								{% if membership.campaign_id == project.id %}
-								<!--
-								Last data upload: <code>{{membership.text_lastactivity}}</code><br/>
-								Last comment by {{user.username}}:  {{ membership.last_post }}
-								-->
-								{% endif %}
-								<!--
-								{% if membership.campaign_id == project.id %}
-								Web services: <code><i class="fa fa-share-alt"></i> {{membership.wms_url}}</code>
-								{% endif %}
-								-->
-							{% endfor %}
+							<!-- empty column? -->
 							</td>
-
 							<td style="text-align:right;">
-
-								{% for membership in user.memberships %}
-									{% if membership.campaign_id == project.id and current_user.is_admin %}
-										{% if project.time_basemap > membership.time_basemap %}
-											<a class="btn btn-success btn-sm" href="/projects/{{project.slug}}/?action=reload&amp;user_id={{user.id}}" >
-											<i class="fa fa-refresh  fa-fw"></i> Update basemap</a> 
-										{% else %}
-											<a class="btn btn-default btn-sm" href="/projects/{{project.slug}}/?action=reload&amp;user_id={{user.id}}">
-											<i class="fa fa-check fa-fw"></i> Update basemap</a> 
-										{% endif %}
-
-									{% endif %}
-								{% endfor %}
-								
-								{% if user.id == current_user.id %}
-								<a class="btn btn-primary btn-sm" href="/projects/{{project.slug}}/{{user.id}}/maps"><i class="fa fa-search"></i> View workspace</a>
-								{% else %}
 								<a class="btn btn-default btn-sm" href="/projects/{{project.slug}}/{{user.id}}/maps"><i class="fa fa-search"></i> View workspace</a>
-								{% endif %}
-							
 							</td>
 						</tr>
 						{% endfor %}
@@ -197,7 +157,7 @@
 
 			<div class="panel panel-default">
 				<div class="panel-heading">
-					<strong><i class="fa fa-plus"></i> Enroll new users</strong> <!--<a href="#" class="pull-right">View Project Basemap</a>-->
+					<strong><i class="fa fa-plus"></i> Enroll new users</strong>
 				</div>
 				<div class="panel-body">
 				<p>
@@ -248,30 +208,41 @@
 
 			<div class="panel panel-default">
 					<div class="panel-heading">
-						<strong><i class="fa fa-plus"></i> Upload project basemap (zip) or background layers (tif)</strong>
+						<strong><i class="fa fa-plus"></i> Project background layers</strong>
 					</div>
+					{% if project.backgroundlayers | length < 1 %}
+					<div class="panel-body">
+						<p><strong>No backgroundlayers have been uploaded yet.</strong></p>
+					</div>
+					{% else %}
+					<div class="panel-body" style="padding:0;">
+						<table class="table">
+						<thead>
+							<tr><th>Name</th><th>File</th><th></th></tr>
+						</thead>
+						<tbody>
+						{% for layer in project.backgroundlayers %}
+							<tr>
+								<td>{{layer.name}}</td>
+								<td><code>{{layer.filename}}</code></td>
+								<td style="text-align:right;">
+									<a class="btn btn-primary btn-sm" href="{{url_for('backgroundlayer_preview',slug=project.slug,backgroundlayer_id=layer.id)}}"><i class="fa fa-search"></i> Preview</a>
+								</td>
+							</tr>
+						{% endfor %}
+						</tbody>
+						</table>
+					</div>
+					{% endif %}
 					{% if current_user.is_admin %}
 						<div class="panel-body">
-						The following background layers have been uploaded:
-						{% for layer in backgroundlayers %}
-							<code>{{layer.name}}</code> 
-						{% endfor %}. These layers can be selected in the "Background Maps" panel of the user workspaces.
-						</div>
-						<div class="panel-body">
-
-							{% if project.basemap_version %}
-								The current version of the basemap for this project dates from: <code>{{project.basemap_version}}</code>
-							{% else %}
-								No basemap has been uploaded yet for this project.
-							{% endif %}
-							When uploading a new base map please make sure that:
+							When uploading a new background layers please keep the following issues in mind:
 						</div>
 						<ul>
-							<li>Your entire QGIS project is contained in a single zip file. Ensure all the files are located in the root of the zipfile, and not in separate subdirectories!</li>
-							<li>Your project uses relative paths (you can set this in <kbd>Project</kbd> <i class="fa fa-caret-right"></i> <kbd>Project Properties</kbd> in QGIS Desktop)</li>
-							<li>Your project uses only source files located in the same directory as the QGIS project file. These files (rasters, shapefiles) must be included in the zip file.</li>
-							<li>When you upload a new basemap it is automatically copied to all the user accounts in this project.</li>
-							<li>Be sure to create pyramids for heavy raster layers in your base map. This will result in much better performance of your web map.</li>
+							<li>At the moment it is only possible to upload GeoTIFF rasters with 3 bands representing RGB (Red, Green, Blue) colors! For examples of some good files, check out the "demo_backgroundlayers" directory in the "test" directory of the code repository. </li>
+							<li>If you upload a background map with the same name as another one in the project it will be overwritten without warning!</li>
+							<li>The available background maps are the same for every user in the fieldwork project.</li>
+							<li>Be sure to apply JPEG compression and overviews to your raster files.This will result in much better performance of the web maps.</li>
 						</ul>
 
 						<div class="panel-body">
@@ -279,17 +250,11 @@
 							<div class="form-group">
 								<input type="file" name="uploadfile">
 							</div>
-							<button type="submit" value="upload" name="action" class="btn btn-primary btn-sm"><i class="fa fa-upload"></i> Upload basemap</button>
-
-							<!--
-							<button type="submit" value="clearall" name="action" class="btn btn-default btn-sm">Delete basemap <i class="fa fa-times"></i></button>
-							-->
-							<button type="submit" value="reload" name="action" class="btn btn-primary btn-sm"><i class="fa fa-refresh"></i> Reload basemap for all users</button>
-							</form>
+							<button type="submit" value="upload" name="action" class="btn btn-primary btn-sm"><i class="fa fa-upload"></i> Upload Background Layer</button>
 						</div>
 					{% else %}
 						<div class="panel-body">
-							Uploading a new project basemap can only be done by users with the administrator role.
+							Uploading a new project basemap can only be done by administrators.
 						</div>
 					{% endif %}
 				</div>
@@ -304,8 +269,5 @@
 {% endblock %}
 
 {% block map %}
-<!--
-<div style="top:70px;width:100%;height:500px;">
-<iframe height="100%" width="100%" frameborder="0" style="width:100%;height:100%;border:none;" src="http://qgis-web-client.localhost/qgiswebclient.html?map=/var/qgis-web-client/projects/testproject.qgs"></iframe>
-</div>-->
+<!-- the map block is not used anymore -->
 {% endblock %}

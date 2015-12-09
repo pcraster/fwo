@@ -5,276 +5,28 @@
 {% endblock %}
 {% block footjs %}
 
-  <script>
-    WMS_URL='/wms/{{wms_key}}';
-    BINGMAPS_KEY='{{config["BINGMAPS_KEY"]}}';
-    BACKGROUND_LAYERS={
-        url: '{{mapserver_url}}',
-        params: {
-          'LAYERS':'{{project.background_layer_default}}',
-          'TILED': true,
-          'MAP':'{{project.background_layers_mapfile}}',
-          'FORMAT':'image/jpeg' //image/png; mode=8bit
-        },
-        serverType: 'mapserver'
-      };
-  </script>
+
   <script type="text/javascript" src="/static/lib/openlayers/ol.js"></script>
-
-  <script type="text/javascript">
-    // var entityMap = {
-    //   "&": "&amp;",
-    //   "<": "&lt;",
-    //   ">": "&gt;",
-    //   '"': '&quot;',
-    //   "'": '&#39;',
-    //   "/": '&#x2F;'
-    // }
-    // function escapeHtml(string) {
-    //   return String(string).replace(/[&<>"'\/]/g, function (s) {
-    //     return entityMap[s];
-    //   });
-    // }
-    function arrayWrap(obj,property) {
-      
-      // Returns properties of an object wrapped in an array so they can 
-      // be iterated over. If the property does not exist an empty array is 
-      // returned (so that any iteration code afterwards still works fine by
-      // just iterating zero times).
-      
-      
-      if(obj.hasOwnProperty(property)) {
-        return obj[property] instanceof Array?obj[property]:[obj[property]]
-      } else {
-        return []
-      }
-    }
-    function bboxToExtent(bbox) {
-      return $.merge(
-        ol.proj.transform([parseFloat(bbox.westBoundLongitude),parseFloat(bbox.southBoundLatitude)], 'EPSG:4326', 'EPSG:3857'),
-        ol.proj.transform([parseFloat(bbox.eastBoundLongitude),parseFloat(bbox.northBoundLatitude)], 'EPSG:4326', 'EPSG:3857')
-        )
-    }
-    function renderlayer(layer) {
-      /*
-      Recursively renders a layer in the QGIS table of contents. This function
-      is called on each layer, then evalates if that layer has any sub layers,
-      and then calls itself on all of those sub layers too. Each time it returns
-      a little bit of html code which in the end make up a nicely sorted and 
-      formatted <ul>...</ul> list showing the project's layers. When the page is 
-      completely loaded (all this stuff happens before the page is fully loaded)
-      some events are attached to the .layer-visibility-toggle link classes which 
-      toggle the visibility of that specific layer.
-      */
-      var has_children=layer.hasOwnProperty('Layer')?true:false;
-      var is_folder=layer.hasOwnProperty('Style')?false:true; 
-      var is_visible=layer["@visible"]=="1"?true:false;
-      var sub_layers=layer.Layer instanceof Array?layer.Layer:[layer.Layer]
-      var zoom_to_extent=""
-      var html=''
-      if(layer.hasOwnProperty("EX_GeographicBoundingBox")) {
-        layer_extent=bboxToExtent(layer.EX_GeographicBoundingBox)
-        zoom_to_extent=' <a data-zoom-to-extent="'+layer_extent.join()+'" href="#" class="zoom-to-extent pull-right"><i class="fa fa-search" data-toggle="tooltip" data-placement="left" title="Zoom to layer"></i></a>'
-      }
-      if(is_folder) {
-        /* layer is a group layer, print a folder icon*/
-        html+='<li class="list-group-item"><i class="fa fa-folder-open fa-fw"></i> '+layer.Title+zoom_to_extent+'<ul class="list-group">';
-        if(has_children) {
-          for (var i in sub_layers) {
-            html+=renderlayer(sub_layers[i]);
-          }
-        }
-        html+='</ul></li>';
-      } else {
-        /* layer is a data layer, print the layer title and add the legend url to an array */
-        legendUrl=layer.Style.LegendURL.OnlineResource["@xlink:href"]+"&LAYERTITLE=FALSE&ITEMFONTSIZE=8&BOXSPACE=1&LAYERTITLESPACE=0&SYMBOLSPACE=1"
-        window.wmsLegendGraphic[layer.Name]={url:legendUrl,title:layer.Title}
-        html+='<li class="list-group-item wms-layer '+(is_visible?'wms-layer-visible':'wms-layer-hidden')+'" data-wms-layer="'+layer.Name+'"><!--<i class="fa fa-map-marker fa-fw"></i>--><a href="#" class="layer-visibility-toggle" title="Toggle visibility"><i class="fa fa-toggle-on fa-fw"></i>&nbsp;'+layer.Title+zoom_to_extent+'</a><div class="layer-actions"><img src="'+legendUrl+'" /></div></li>'
-      }
-      return html
-    }
-    function setprojectsettings(data) {
-      /* 
-      This is the callback function which is called when the GetProjectSettings 
-      request is done. The data is stored in window.wmsProjectSettings and the
-      renderLayer() function is called recursively for each layer in the QGIS
-      project, each time adding an extra depth level to the layer overview on
-      the page.
-      */
-      if(data.hasOwnProperty("WMS_Capabilities")) {
-        window.wmsProjectSettings=data
-        window.wmsLegendGraphic=[]
-        
-        
-        /*
-        The geographic bounding box of the top project node is used to make an 
-        extent which is attached to the "Reset Zoom" link, which resets the zoom
-        back to the project extent which encompasses all the layers.
-        */
-        project_extent=bboxToExtent(data.WMS_Capabilities.Capability.Layer.EX_GeographicBoundingBox)
-        $("a#zoom-to-project-extent").data("zoom-to-extent",project_extent.join())
-        $(document).ready(function(){ //trigger a click event once the doc is ready
-          $("a#zoom-to-project-extent").click()
-        });
-
-        /*
-        As the topmost layer is the project node, we don't show this one in the web
-        interface, only layers below that level. However, because sub_layers may
-        also turn out to be a single Object (in case there is only one sub layer) 
-        rather than an array of Objects (when there are more than one sub layers) 
-        we force it to be an Array with only one item using the arrayWrap function. 
-        This makes it easier to iterate over.
-        */
-        var maplayers=$("ul#map-layers")
-        var sub_layers=arrayWrap(data.WMS_Capabilities.Capability.Layer,"Layer")
-        for (var i in sub_layers) {
-          maplayers.append(renderlayer(sub_layers[i]))
-        }
-
-        var maplegend=$("ul#map-legend")
-        for (var i in window.wmsLegendGraphic) {
-          maplegend.append('<li class="list-group-item" style="padding:5px;padding-left:17px;"><strong>'+window.wmsLegendGraphic[i].title+'</strong><br /><img src="'+window.wmsLegendGraphic[i].url+'" /></li>')
-        }
-      }
-      if(data.hasOwnProperty("ServiceExceptionReport")) {
-        /*
-        Uhoh this isn't good...
-        */
-        alert("WMS Request failed! "+data.ServiceExceptionReport.ServiceException["@code"]+". \nAdditional information:\n"+data.ServiceExceptionReport.ServiceException["#text"])
-      }
-    }
-    function getVisibleWmsLayers() {
-      /*
-      Returns a comma-joined string of the visible wms layers which can be used
-      in updating the wms getmap request. It only checks elements with the 
-      "wms-layer" class and uses the "data-wms-layer" attribute of that element
-      (if it is visible) to make the list of wms layer names. The list is then
-      reversed and joined to ensure it is layered properly.
-      */
-      var visible_wms_layers=[]
-      $(".wms-layer").each(function(){
-        var layer=$(this)
-        if (layer.hasClass("wms-layer-visible")) {
-          visible_wms_layers.push(layer.data("wms-layer"))
-        }
-      })
-      return visible_wms_layers.reverse().join()
-    }
-    // function parseFeatureInfo(data) {
-    //   /*
-    //   Returns a block of html to fill the getFeatureInfo popup with.
-    //   */
-    //   var html=''
-    //   if(data.hasOwnProperty("GetFeatureInfoResponse")) {
-    //     var layers=arrayWrap(data.GetFeatureInfoResponse,"Layer")
-    //     layers.reverse()
-    //     html+=layersToRows(layers)
-    //   }
-    //   return html
-    // }
-    // function layersToRows(layers) {
-    //   var html=''
-    //   var n=0
-    //   $.each(layers,function(index,layer){
-    //     var features=arrayWrap(layer,"Feature")
-    //     var rows=''
-    //     $.each(features,function(index,feature){
-    //       var feature_attributes=arrayWrap(feature,"Attribute")
-    //       rows+=attributesToRows(feature_attributes)
-    //     })
-    //     var attributes=arrayWrap(layer,"Attribute")
-    //     rows+=attributesToRows(attributes)
-    //     if(rows!='') {
-    //       var layer_html_rows="<tr class='__TRCLASS__' style='background-color:#eee;'><td colspan='2'><strong>"+layer["@name"]+"</strong></td></tr>"+rows
-    //       html+=layer_html_rows.replace(/__TRCLASS__/g,(n>0)?'not-top-layer':'')
-    //       n++;
-    //     }
-    //   })
-    //   return html
-
-    // }
-    // function attributesToRows(attributes) {
-    //   /*
-    //   Returns a html table rows for an array of attributes. This also checks
-    //   for attribute values which may be filenames (such as links to uploaded
-    //   images) as well as HTML links.
-    //   */
-    //   var html=''
-    //   $.each(attributes,function(index,attribute){
-    //     html+="<tr class='__TRCLASS__'><td><nobr>"+attribute["@name"]+"</nobr></td><td>"+attributeValueParser(attribute["@value"])+"</td></tr>"
-    //   })
-    //   return html
-    // }
-    // function attributeValueParser(value) {
-    //   /*
-    //   Returns a parsed attribute value for in the popup. This checks whether the
-    //   attribute value is a URL, a filename linking to an uploaded attachment, or
-    //   a paragraph of text. Depending on the type of data it will turn it into a 
-    //   link, paragraph, or wrap it in a <code> tag.
-
-    //   Todo: - change look & feel of large texts. (ie. show a teaser, click to
-    //           open a modal with the full text)
-    //         - check if attachments have been uploaded with a HEAD request, show
-    //           pics in modal and download dialog for other files.
-    //         - check urls using a regex
-    //   */
-
-    //   //Valid filename extensions. Ensures that values such as "12.312" are not
-    //   //seen as files.
-    //   var filename_extensions="png jpg txt doc docx xls xlsx jpeg";
-
-    //   //Text length to turn into a paragraph. If a lot of text is present as an
-    //   //attribute value (such as a detailed description of something) it is
-    //   //better to format it as a paragraph rather than an attribute value in a
-    //   //<code> element.
-    //   var length_max=128;
-    //   var length_truncate=256;
-
-    //   var filename_regex=/\.([0-9a-z]+)(?:[\?#]|$)/i;
-    //   var filename_list=value.split(",")
-    //   var filename_html=''
-
-    //   $.each(filename_list,function(index,filename){
-    //     var filename_match=filename.match(filename_regex);
-    //     if(filename_match) {
-    //       var filename_extension=filename_match[1].toLowerCase()
-    //       if($.inArray(filename_extension,filename_extensions.split(" "))!=-1) {
-    //         var is_image=(filename_extension=='png' || filename_extension=='jpeg' || filename_extension=='jpg')?true:false;
-    //         var filename_url="file?filename="+filename;
-    //         if(is_image){
-    //           filename_html+= "<i class='fa fa-photo'></i> <code><a href='#' onclick=\"photoModal('"+filename_url+"')\" class='disabled'>"+filename+"</a></code><br/>"
-    //         } else {
-    //           filename_html+= "<i class='fa fa-paperclip'></i> <code><a href='"+filename_url+"' class='disabled' target='_blank'>"+filename+"</a></code><br/>"
-    //         }
-    //       }
-    //     }
-    //   })
-    //   if(filename_html=='') {
-    //     if(value.length>length_max) {
-    //         value=""+value
-    //         return "<p>"+escapeHtml(value)+"</p>"
-    //     } else {
-    //       value=""+value
-    //       return "<code>"+escapeHtml(value)+"</code>"
-    //     }
-    //   } else {
-    //     return filename_html
-    //   }
-    // }
-
-  </script>
-  <!--
-    Load the GetProjectSettings request from our custom WMS proxy. The proxy
-    translates the request from the XML returned by QGIS server to JSON and 
-    wraps the response in a callback to the function defined in the JSONP
-    request variable. This saves us a whole lot of XML parsing on the client
-    side and lets us loop through a JSON variable rather than an XML response.
-    Other WMS servers obviously do not support these types of requests, but 
-    for our purposes it should work just fine.
-  -->
-  <script type="text/javascript" src="/wms/{{wms_key}}?SERVICE=WMS&amp;VERSION=1.3&amp;REQUEST=GetProjectSettings&amp;FORMAT=application/json&amp;JSONP=setprojectsettings"></script>
   <script type="text/javascript" src="/static/lib/fwo/fieldworkonline-map.js"></script>
   <script type="text/javascript" src="/static/lib/fwo/fieldworkonline-popup.js"></script>
+  <script type="text/javascript" src="/static/lib/fwo/fieldworkonline-feedback.js"></script>
+    <script type="text/javascript">
+        $(document).ready(function(){
+            /*
+            Set some init values that will be used by FWO.map.init()
+            */
+            FWO.config = {
+                'bingmaps_key':'{{config["BINGMAPS_KEY"]}}'
+            }
+
+            /* 
+            Fetch the map layers from the JSON document generated by the project_data_maplayers 
+            view.
+            */
+            FWO.map.fetch_map("{{url_for('project_data_maplayers', slug=project.slug, user_id=user.id)}}")
+
+        })
+    </script>
 {% endblock %}
 
 {% block maps %}
@@ -286,8 +38,9 @@
               <div class="panel-heading">
                 <h4 class="panel-title">
                   <i class="fa fa-fw fa-bars"></i> 
-                  <a data-toggle="collapse" data-parent="#accordion" href="#collapseOne"><strong>Data</strong></a>
-                  <a data-zoom-to-extent="" href="#" id="zoom-to-project-extent" class="zoom-to-extent pull-right">Reset zoom <i class="fa fa-arrows"></i></a>
+                  <a data-toggle="collapse" data-parent="#accordion" href="#collapseOne"><strong>Uploaded Data</strong></a>
+                  <!--
+                  <a data-zoom-to-extent="" href="#" id="zoom-to-project-extent" class="zoom-to-extent pull-right">Reset zoom <i class="fa fa-arrows"></i></a>-->
                 </h4>
 
 
@@ -295,7 +48,32 @@
               <div id="collapseOne" class="panel-collapse collapse in" >
 
                 <ul class="list-group" id="map-layers">
-                  <!-- this list is filled dynamically from the GetProjectSettings WMS request. -->
+                
+                {% if observationlayers | length > 0 %}
+                <li class="list-group-item">
+                    <i class="fa fa-folder-open fa-fw"></i> Observations
+                    <ul class="list-group" id="userdata-layers">
+                    {% for observationlayer in observationlayers %}
+                      <li id="userdata-layers-{{observationlayer.safe_name}}" class="list-group-item wms-layer wms-layer-visible" data-layer-name="{{observationlayer.safe_name}}" data-layer-color="{{observationlayer.color}}"  data-layer-geojson="{{ url_for('project_data_layer', slug=project.slug, user_id=user.id, safe_name=observationlayer.safe_name) }}">
+                        <a href="#" class="layer-visibility-toggle" title="Toggle visibility">
+                          <i class="fa fa-toggle-on fa-fw"></i>&nbsp;{{observationlayer.name}} 
+                        </a>
+                        <a class="zoom-to-extent pull-right" style="text-decoration:none;cursor:hand;">
+                          <span style="color:{{observationlayer.color}};"><i class="fa fa-circle" style="color:{{observationlayer.color}};"></i></span> 
+                          <i data-original-title="Zoom to layer" class="fa fa-search" data-toggle="tooltip" data-placement="left" title=""></i> 
+                        </a>
+                      </li>
+                    {% endfor %}
+                    </ul>
+                </li>
+                {% else %}
+                <li class="list-group-item">
+                  <small>No observations have been uploaded yet into this workspace.</small>
+                </li>
+                {% endif %}
+
+
+
                 </ul>
 
               </div>
@@ -308,17 +86,24 @@
                 </h4>
               </div>
               <div id="collapseFour" class="panel-collapse collapse">
+
                 <ul class="list-group" id="background-layers">
-                  {% for layer in project.background_layers %}
-                    <li class="list-group-item" id="background-layer-{{layer.name}}"><i class="fa fa-check fa-fw"></i> <a href="#" class="set-background-layer" data-set-background-layer="{{layer.name}}">{{layer.name}}</a></li>
-                  {% endfor %}
-                  <!--
+                    <li class="list-group-item"><i style="color:#000;" class="fa fa-folder-open fa-fw" ></i> Project Data</li>
+                    {% if project.backgroundlayers|length > 0%}
+                      {% for layer in project.backgroundlayers %}
+                      <li class="list-group-item" id="background-layer-{{layer.name}}"><i class="fa fa-check fa-fw"></i> <a href="#" class="set-background-layer" data-set-background-layer="{{layer.name}}">{{layer.name}}</a></li>
+                      {% endfor %}
+                    {% else %}
+                      <li class="list-group-item"><small>No additional data layers have been uploaded in this project. Please use the global maps as backgrounds.</small></li>
+                    {% endif %}
+                    <li class="list-group-item"><i style="color:#000;" class="fa fa-folder-open fa-fw" ></i> Global Maps</li>
                     <li class="list-group-item" id="background-layer-bing-aerial"><i class="fa fa-check fa-fw"></i> <a href="#" class="set-background-layer" data-set-background-layer="bing-aerial">bing-aerial</a></li>
                     <li class="list-group-item" id="background-layer-bing-road"><i class="fa fa-check fa-fw"></i> <a href="#" class="set-background-layer" data-set-background-layer="bing-road">bing-road</a></li>
-                    -->
+
                 </ul>
               </div>
             </div>
+            <!--
             <div class="panel panel-default">
               <div class="panel-heading">
                 <h4 class="panel-title">
@@ -333,19 +118,21 @@
 
               </div>
             </div>
-            
+            -->
 
           </div>
           </div>
+
+          <!--
+            HTML Elements for the OpenLayers map.
+          -->
           <div class="col-md-9 col-sm-9" style="padding-right:0px;padding-left:0;">
             <div id="map" class="map">
-              <div id="popup" class="ol-popup">
-                <div id="popup-header" style="height:20px;">
-                  <form>
-                    <input type="checkbox" id="checkbox-identify-toplayer-only">
-                    <a href="#" id="identify-toplayer-only">Show hits on topmost layer only</a>
-                    <a href="#" id="popup-closer" class="ol-popup-closer">Close popup</a>
-                  </form>
+              <div id="popup" class="ol-popup" style="display:block;">
+                <div id="popup-header" style="height:25px;">
+                  <a id='popup-leave-comment' href='#' data-location="">Leave comments or feedback</a>
+                  <span id='popup-title'></span>
+                  <a href="#" id="popup-closer" class="ol-popup-closer"><i class='fa fa-times'></i></a>
                 </div>
                 <div id="popup-content"></div>
               </div>

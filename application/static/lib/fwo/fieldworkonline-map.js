@@ -1,44 +1,126 @@
+/*
+Javascript code for showing the main map in a users' workspace. All the map related
+code is in FWO.map.*, the actual OpenLayers map instance is FWO.map.obj.
+
+Functionality for leaving feedback is located in FWO.feedback.*.
+*/
 var FWO=$.extend(FWO || {},{
+	config:{},
 	map:{
+		fetch_map:function(url) {
+			$.ajax({
+				type: "GET",
+				url: url,
+				success: function(data) {
+					FWO.map._layers = FWO.map.json_to_layers(data)
+
+					FWO.map.init()
+					FWO.map.update_from_state()
+
+					FWO.popup.init()
+				},
+				error: function() {
+					alert("Could not load map!")
+				}
+			})
+		},
 		init:function(){
+			/*
+			FWO.map.init()
+
+			Initialize the fieldwork online map in a user's workspace.
+			*/
+
+			/*
+			Create the map controls. These will be added to the map instance later.
+			*/
 			var controls = ol.control.defaults({rotate: false}).extend([new ol.control.ScaleLine()])
 			var interactions = ol.interaction.defaults({altShiftDragRotate:false, pinchRotate:false});
 			var view = new ol.View({center: ol.proj.transform([5.721586,44.42], 'EPSG:4326', 'EPSG:3857'),zoom: 11})
-			FWO.map.layers.qgisServer._useForGetFeatureRequests=true
+
+			/*
+			Create the map object in FWO.map.obj. This is the OpenLayers map instance
+			that will hold the actual map.
+			*/
 			FWO.map.obj = new ol.Map({
 				target: 'map',
-				layers: [FWO.map.layers.backgroundAerial,FWO.map.layers.backgroundRoad,FWO.map.layers.backgroundWms,FWO.map.layers.qgisServer],
-				//overlays: [FWO.map.overlay],
-				overlays:[],
+				layers: FWO.map._layers,
+				overlays: [],
 				view: view,
 				controls: controls,
 				interactions: interactions
 			})
-			//FWO.map.obj.on('singleclick',FWO.map.getfeatureinfo)
-			//$('a#popup-closer').click(FWO.map.closefeatureinfo)
-			$('a.set-background-layer').click(FWO.map.setbackground)
-			$("a.zoom-to-extent").click(FWO.map.zoom_to_extent)
+
+			/* Attach a click event to the background links for changing the background map */
+			$('a.set-background-layer').click(function(){
+				var name = $(this).data("set-background-layer")
+				$(this).blur()
+				$("ul#background-layers li").removeClass('active')
+				$("li#background-layer-"+name).addClass('active')
+				FWO.map.setbackground(name)
+			})
 			$('ul#background-layers li a').last().click()
-			$('[data-toggle="tooltip"]').tooltip()
-			$("a.layer-visibility-toggle").click(FWO.map.toggle_layer_visibility)
-			$('form#feedback-form').submit(FWO.feedback.submit)
 
-			$("a#identify-toplayer-only").click(function(){
-				$("input#checkbox-identify-toplayer-only").click()
-				return false;
-			})
-			$("input#checkbox-identify-toplayer-only").change(function(){
-				/* change event on the checkbox */
-				if($(this).is(":checked")) {
-					$("table#popup-attribute-table").addClass("show-toplayer-only")
+			/* 
+			Call FWO.map.datalayer_toggle_visibility when one of the visibility links is clicked 
+			*/
+			$("a.layer-visibility-toggle").click(function(){
+				var el=$(this).parent("li")
+				var name=el.data("layer-name")
+				var is_visible=FWO.map.datalayer_toggle_visibility(name)
+				var li = $("li#userdata-layers-"+name)
+				if(li) {
+				if(is_visible) {
+					li.removeClass("wms-layer-hidden").addClass("wms-layer-visible")
 				} else {
-					$("table#popup-attribute-table").removeClass("show-toplayer-only")
+					li.removeClass("wms-layer-visible").addClass("wms-layer-hidden")
 				}
+			}
+			});
 
-			})
+			/* 
+			Add a click event handler to the "zoom-to-extent" links for each layer (the magnifying
+			glass)
+			*/
+			$("a.zoom-to-extent").click(function(){
+				var el=$(this).parent("li")
+				var name=el.data("layer-name")
+				FWO.map.datalayer_zoom_to(name)
+			});
+
+			/*
+			Check if the feedback script is loaded.
+			*/
+			if("feedback" in FWO) {
+				/*
+				Add a click event handler to the "leave a comment" link within popups. It uses the links'
+				data-location-x and data-location-y attributes to get the location.
+				*/
+				$("a#popup-leave-comment").click(function(){
+					var el=$(this)
+					var coord=el.data("location")
+					FWO.feedback.show(coord)
+				});			
+				/*
+				Add a "submit" event handler to the feedback form to call FWO.feedback.submit when the
+				"submit feedback" button is clicked.
+				*/
+				$("form#feedback-form").submit(FWO.feedback.submit)
+			} else {
+				/*
+				
+				*/
+				$("a#popup-leave-comment").hide()
+			}
+
+			/*
+			Initialize any bootstrap tooltips which may exist on the page.
+			*/
+			$('[data-toggle="tooltip"]').tooltip()
 		},
-		obj: undefined,
+		//obj: undefined,
 		//overlay: new ol.Overlay({element: document.getElementById('popup')}),
+		/*
 		layers:{
 			backgroundAerial:new ol.layer.Tile({
 				visible: true,
@@ -71,154 +153,186 @@ var FWO=$.extend(FWO || {},{
 				})
 			})
 		},
-		// getfeatureinfo:function(evt) {
-		// 	/*
-		// 	FWO.map.getfeatureinfo
-
-		// 	Click event on the map. Do a GetFeatureInfo request.
-		// 	*/
-		// 	var viewTweak=5; //sets sensitivity of the click area
-		// 	var viewResolution = (viewTweak*FWO.map.obj.getView().getResolution());
-		// 	var url = FWO.map.layers.qgisServer.getSource().getGetFeatureInfoUrl(evt.coordinate, viewResolution, 'EPSG:3857',{'INFO_FORMAT': 'application/json'});
-		// 	if(url) {
-		// 		//console.log("getFeatureInfo: "+url)
-		// 		$.ajax({url:url}).done(function(data){
-		// 			/* fill the popup with data if the request to url completes. */
-		// 			$('#attribute-values').html("")
-		// 			var feedback_link='<tr><td colspan="2" style="background-color:#eee;"><a href="javascript:FWO.feedback.show('+evt.coordinate[0]+','+evt.coordinate[1]+')" id="popup-feedback-link">Leave a comment</a></td></tr>'
-		// 			var html=parseFeatureInfo(data)
-		// 			var el=$(FWO.map.overlay.getElement())
-		// 			var tableclass=$("input#checkbox-identify-toplayer-only").is(":checked")?'show-toplayer-only':''
-
-		// 			FWO.map.overlay.setPosition(evt.coordinate);
-		// 			el.find("div#popup-content").html('<table id="popup-attribute-table" class="table table-condensed table-bordered '+tableclass+'" style="margin:0;font-size:0.8em;">'+feedback_link+html+'</table>')
-		// 			el.show()
-		// 		})
-		// 	}
-		// },
-		// closefeatureinfo:function(evt) {
-		// 	/*
-		// 	Close the feature info popups
-		// 	*/
-		// 	evt.preventDefault()
-		// 	var link=$(this)
-		// 	var popup=$(FWO.map.overlay.getElement())
-		// 	link.blur()
-		// 	popup.hide()
-		// },
-		setbackground:function(evt) {
-			evt.preventDefault()
-			var link=$(this)
-			var name=link.data("set-background-layer")
-			FWO.map.current_background=name
-			$('ul#background-layers li').each(function(){
-				li=$(this)
-				li.removeClass('active')
-				if (li.attr("id")=="background-layer-"+name) {
-					li.addClass('active')
+		*/
+		getlayerbyname:function(name) {
+			for(var i=0; i<FWO.map._layers.length; i++) {
+				if(FWO.map._layers[i]["_name"] == name) {
+					return FWO.map._layers[i]
 				}
-			})
-			if(name=='bing-aerial') {
-				FWO.map.layers.backgroundAerial.setVisible(true)
-				FWO.map.layers.backgroundRoad.setVisible(false)
-				FWO.map.layers.backgroundWms.setVisible(false)
 			}
-			else if(name=='bing-road') {
-				FWO.map.layers.backgroundAerial.setVisible(false)
-				FWO.map.layers.backgroundRoad.setVisible(true)
-				FWO.map.layers.backgroundWms.setVisible(false)
-			} else {
-				FWO.map.layers.backgroundAerial.setVisible(false)
-				FWO.map.layers.backgroundRoad.setVisible(false)
-				FWO.map.layers.backgroundWms.setVisible(true)
-				FWO.map.layers.backgroundWms.getSource().updateParams({'LAYERS':name})
-			}
-		},
-		current_background:undefined,
-		zoom_to_extent:function(evt) {
-			evt.preventDefault()
-			var extent=$(this).data("zoom-to-extent").split(",").map(parseFloat)
-			FWO.map.obj.getView().fitExtent(extent, FWO.map.obj.getSize());
-		},
-		toggle_layer_visibility:function(evt) {
-			evt.preventDefault()
-			var layer=$(this).parent("li.wms-layer")
-			if(layer.hasClass("wms-layer-visible")) {
-				layer.removeClass("wms-layer-visible").addClass("wms-layer-hidden")
-			} else {
-				layer.removeClass("wms-layer-hidden").addClass("wms-layer-visible")
-			}
-			var visible_layers=window.getVisibleWmsLayers()
-			FWO.map.layers.qgisServer.getSource().updateParams({'LAYERS':visible_layers})
 			return false;
-		}
-	},
-	feedback:{
-		map:undefined,
-		show:function(x,y) {
-			$('#feedback-modal').modal('show');
-			$('#comment_body').val("")
-
-			var map = FWO.map.obj
-			var zoom = map.getView().getZoom()
-			var layers = map.getLayers()
-			var view = new ol.View({center: [x, y],zoom: zoom})
-	    	var vectorSource = new ol.source.Vector({'features':[new ol.Feature({geometry:new ol.geom.Point([x,y])})]});
-
-		    var iconStyle = new ol.style.Style({
-		      image: new ol.style.Icon( ({
-		        anchor: [0.5, 48],
-		        anchorXUnits: 'fraction',
-		        anchorYUnits: 'pixels',
-		        opacity: 1,
-		        src: '/static/gfx/m2.png'
-		      }))
-		    });
-
-	    	var vectorLayer = new ol.layer.Vector({source: vectorSource,style: iconStyle});
-
-			if(FWO.feedback.map == undefined) {
-				FWO.feedback.map = new ol.Map({target: 'feedback-map'});
-			}
-			FWO.feedback.map.setView(view)
-			FWO.map.obj.getLayers().forEach(function(lyr,ix,ar){
-				FWO.feedback.map.addLayer(lyr)
-			})
-			FWO.feedback.map.addLayer(vectorLayer)
-			FWO.feedback.map.on('moveend',function(){
-				var _mapstate=FWO.map.current_background+"|"+FWO.map.layers.qgisServer.getSource().getParams()['LAYERS']
-				$('form#feedback-form input[name="map_state"]').val(_mapstate)
-				$('form#feedback-form input[name="map_center"]').val(FWO.feedback.map.getView().getCenter())
-				var _view=FWO.feedback.map.getView()
-				$('form#feedback-form input[name="map_view"]').val(_view.getCenter()+","+_view.getZoom())
-				$('form#feedback-form input[name="map_marker"]').val(x+","+y)
-			})
 		},
-		submit:function(evt) {
-			evt.preventDefault()
-			//disable the submit button to prevent doubleclicking when a connection is slow...
-			$('button#feedback-modal-submit').prop("disabled",true)
-			$.ajax({
-				type:"POST",
-				url: $(this).attr('action'),
-				data: $(this).serialize(),
-				success: function(data){
-					$('button#feedback-modal-submit').prop("disabled",false)
-					$('#feedback-modal').modal('hide');
-				},
-				error: function() {
-					alert("An error occurred while trying to add your comment!")
-					$('button#feedback-modal-submit').prop("disabled",false)
+		getvisiblelayers:function() {
+			/*
+			FWO.map.getvisiblelayers()
+
+			Returns a list of layer names which are visible.
+			*/
+			var visible_layers = []
+			for(var i=0; i<FWO.map._layers.length; i++) {
+				if("_name" in FWO.map._layers[i]) {
+					if(FWO.map._layers[i].getVisible()) {
+						visible_layers.push(FWO.map._layers[i]._name)
+					}
 				}
-			})
+			}
+			return visible_layers;
+		},
+		setvisiblelayers:function(visible_layers) {
+			/*
+			FWO.map.setvisiblelayers()
+
+			Hides all layers except the ones passed in visible_layers
+			*/
+			for(var i=0; i<FWO.map._layers.length; i++) {
+				if("_name" in FWO.map._layers[i]) {
+					var layer = FWO.map._layers[i]
+					var inArray = $.inArray(layer["_name"],visible_layers)
+					layer.setVisible(inArray != -1 ? true : false)
+				}
+			}
+		},
+		setbackground:function(name) {
+			/*
+			FWO.map.setbackground()
+
+			Set the background of the map
+			*/
+			for(var i=0; i<FWO.map._layers.length; i++) {
+				var layer = FWO.map._layers[i]
+				if("_type" in layer) {
+					if(layer["_type"] == 'background' || layer["_type"] == 'wms') {
+						layer.setVisible(layer["_name"]==name?true:false) 
+					}
+				}
+			}
+		},
+		datalayer_zoom_to:function(name) {
+			/*
+			FWO.map.datalayer_zoom_to()
+
+			Zoom to the extent of one of the data layers
+			*/
+			var layer = FWO.map.getlayerbyname(name)
+			var extent = layer.getSource().getExtent()
+		 	FWO.map.obj.getView().fitExtent(extent, FWO.map.obj.getSize())
+		},
+		datalayer_toggle_visibility:function(name) {
+			/*
+			FWO.map.datalayer_toggle_visibility()
+
+			Toggle the visibility of one of the data layers
+			*/
+			var layer = FWO.map.getlayerbyname(name)
+			layer.setVisible(layer.getVisible() ? false : true)
+			return layer.getVisible()
+		},
+		json_to_layers:function(data) {
+			/*
+			FWO.map.json_to_layers() 
+
+			Convert json data created by the "project_data_maplayers" view to OpenLayers map
+			layers which can be added to the map.
+			*/
+			var layers = []
+			for(var i=0; i<data.layers.length; i++) {
+				var layer = data.layers[i];
+				var new_layer = undefined
+				/*
+				For bing road and bing aerial layers.
+				*/
+				if(layer['type'] == 'background') {
+					new_layer = new ol.layer.Tile({
+						visible: false,
+						preload: Infinity,
+						source: new ol.source.BingMaps({ key: FWO.config["bingmaps_key"], imagerySet: layer['name']=='bing-road' ? 'Road' : 'Aerial' })
+					});
+				}
+				/* 
+				For WMS layers representing a BackgroundLayer.
+				*/
+				if(layer['type'] == 'wms') {
+					new_layer = new ol.layer.Tile({
+						visible: false,
+						source: new ol.source.TileWMS(({
+							url: layer['attributes']['mapserver_url'],
+							params: {
+								'LAYERS':layer['attributes']['mapserver_layer'],
+								'TILED': true,
+								'MAP':layer['attributes']['mapserver_mapfile'],
+								'FORMAT':'image/png; mode=8bit' //image/png; mode=8bit
+							},
+							serverType: 'mapserver'
+						}))
+					})
+				}
+
+				/*
+				For geojson layers with Observations in it.
+				*/
+				if(layer['type'] == 'geojson') {
+					new_layer = new ol.layer.Vector({
+						visible: true,
+						source: new ol.source.GeoJSON({
+							projection : 'EPSG:3857',
+							preFeatureInsert: function(feature) { feature.geometry.transform('EPSG:4326', 'EPSG:3857') },
+							url:layer['attributes']['url']
+						}),
+						style: new ol.style.Style({
+							image: new ol.style.Circle({
+								radius: 4,
+								fill: new ol.style.Fill({color:layer['attributes']['color'],opacity: 0.6}),
+								stroke: new ol.style.Stroke({color: 'black', width: 1, opacity:0.5})
+							})
+						})
+					});
+				}
+				/*
+				Only add the new layer to the layers variable when it is actually an instance of an
+				OpenLayers tile or vector layer.
+				*/
+				if(new_layer instanceof ol.layer.Vector || new_layer instanceof ol.layer.Tile) {
+					new_layer._name = layer['name'] //Add a _name attribute to the layer so that we can find it again using FWO.map.getlayerbyname()
+					new_layer._type = layer['type']
+					layers.push(new_layer)
+				}
+			}
+			return layers
+		},
+		update_from_state:function() {
+			/*
+			FWO.map.update_for_comment()
+
+			Function for updating the map state to match a specific state at the
+			time a comment was made. Takes three strings (state, view, and a 
+			marker location)
+			*/
+			if("map_state" in FWO.config) {
+				/*
+				Update the visible layers.
+				*/
+				var visible_layers = FWO.config["map_state"].split("|")
+				console.log(visible_layers)
+				FWO.map.setvisiblelayers(visible_layers)
+			}
+			if("map_view" in FWO.config) {
+				/*
+				Update the map view.
+				*/
+				var xyz = FWO.config["map_view"].split(",")
+				var view = new ol.View({ center: [parseFloat(xyz[0]),parseFloat(xyz[1])], zoom: parseInt(xyz[2]) })
+				FWO.map.obj.setView(view);
+			}
+			if("map_marker" in FWO.config) {
+				/*
+				Update the map marker.
+				*/
+				var xy = FWO.config["map_marker"].split(",")
+				var vectorSource = new ol.source.Vector({ 'features':[new ol.Feature({geometry:new ol.geom.Point([parseFloat(xy[0]),parseFloat(xy[1])])})], 'projection':'EPSG:4326' });
+				var iconStyle = new ol .style.Style({ image: new ol.style.Icon( ({ anchor: [0.5, 48], anchorXUnits: 'fraction', anchorYUnits: 'pixels', opacity: 1, src: '/static/gfx/m2.png' })) });
+				var layer = new ol.layer.Vector({source: vectorSource, style: iconStyle});
+				FWO.map.obj.addLayer(layer)
+			}
 		}
-	}
-})
-$(function() {
-	if(document.getElementById('map') != null) {
-		FWO.map.init()
-	}
-	if(document.getElementById('zoom-to-project-extent') != null) {
-		$("a#zoom-to-project-extent").click()
 	}
 })

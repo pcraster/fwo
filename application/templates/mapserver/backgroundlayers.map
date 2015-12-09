@@ -1,6 +1,4 @@
 MAP
-
-#{{project.background_layers}}
     NAME "backgroundlayers"
     STATUS ON
     SIZE 600 400
@@ -18,7 +16,7 @@ MAP
             "wms_enable_request" "*"
         END
     END
-    {% for layer in project.background_layers %}
+    {% for layer in project.backgroundlayers %}
     LAYER
         NAME "{{layer.name}}"
         METADATA
@@ -30,7 +28,7 @@ MAP
         END
         TYPE RASTER
         STATUS ON
-        DATA "{{layer.file}}"
+        DATA "{{layer.filename}}"
         PROJECTION
             "init=epsg:3857"
         END

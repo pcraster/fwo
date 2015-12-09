@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block footjs %}
+	<script type="text/javascript">
+
+	</script>
+{% endblock %}
+{% block content %}
+<div class="well"  style="margin-top:15px;">
+	<h2 style="margin-top:10px;">{{project.name}} - Background Layer Preview: {{backgroundlayer.name}}</h2>
+</div>
+<div class="row">
+	<div class="col-md-12 col-sm-12">
+		<ul>
+			<li>
+				Mapserver location in the project config file is: <code>{{config["MAPSERVER_URL"]}}</code>. If we do a request there we get back status <code>{{mapserver_request.status_code}}</code> and response text <code>{{mapserver_request.text}}</code>. This should give a warning about QUERY_STRING being empty.
+			</li>
+			<li>
+				The mapserver configuration file for the <code>{{project.name}}</code> project is located in <code>{{project.background_layers_mapfile}}</code>.
+			</li>
+			<li>
+				The WMS location is: <code>{{project.background_layers_wms_url}}</code>, and the layer can be accessed as: <code>{{backgroundlayer.name}}</code>. You should be able to find the other layers by adding a WMS layer in QGIS.
+			</li>
+		</ul>
+	</div>
+</div>
+
+
+
+
+	
+{% endblock %}
+
+{% block map %}
+<!-- the map block is not used anymore -->
+{% endblock %}

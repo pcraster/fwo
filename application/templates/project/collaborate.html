@@ -1,13 +1,15 @@
 {% extends "base.html" %}
 {% block content %}
-	<h2>Web Services</h2>
+	<h2>Collaboration</h2>
 	<p>
-		The data for this fieldwork project is accessible via the internet. The easiest access is via Web Map Services (WMS) and Web Feature Services (WFS). These services let you load online geodata in the GIS client (such as QGIS or ArcGIS) on your desktop. The url for map services (both WMS and WFS) for your project data is:
+		Currently the data for this fieldwork project is only available as GeoJSON files.
 	</p>
-	<p>
-		<strong>WMS and WFS location: </strong><code>{{request.scheme}}://{{request.host}}/wms/{{cu.wms_key}}</code>
-	</p>
-	<p>
-		In QGIS you can add your data to a QGIS project by using the <kbd>Layer</kbd> <i class="fa fa-caret-right"></i> <kbd>Add Layer</kbd> <i class="fa fa-caret-right"></i> <kbd>Add WFS Layer</kbd> menu and entering the above URL. It is also possible to add the layer a WMS service (which shows only the map image, not feature data).
-	</p>
+	<ul>
+		{% for observationlayer in observationlayers %}
+			<li> 
+				<strong><a href="{{observationlayer.download_link}}">{{observationlayer.name}}</a></strong>
+				<code>{{observationlayer.download_link}}</code>
+			</li>
+		{% endfor %}
+	</ul>
 {% endblock %}

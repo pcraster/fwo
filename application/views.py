@@ -1,21 +1,30 @@
+"""
+Flask views for the Fieldwork Online web application
+"""
 from application import app
-from .models import * 
+from .models import *
 
 @app.route("/")
 @login_required
 def home():
     """
-    The home view is not really a view but just redirects the visitor to the right place in
-    more or less the following order:
+    The home view is not really a proper view but just redirects the user to
+    the right place in more or less the following order:
 
-    - Not logged in? Go to signup/login page. Done via @login_required decorator.
-    - If the current user is not working on a project (current_user.current_project) then
-      redirect to settings page so he can pick a project.
-    - If you are working on a project, and you're not an admin or supervisor then go to the 
-      project overview page (workspace) where you can select data, maps, etc.
-    - If you are working on a project, and you're an admin or supervisor then do the project
-      page where you can see all the enrolled users, and where you can check out their 
-      workspaces.
+    * Not logged in? Go to signup/login page. The redirect happens automa-
+      tically because of the @login_required decorator.
+
+    * If the current user is not working on a project
+      (current_user.current_project is empty) then redirect to settings page
+      so he can pick a project.
+
+    * If you are working on a project, and you're not an admin or supervisor
+      then go to the project overview page (workspace) where you can select
+      data, maps, etc.
+
+    * If you are working on a project, and you're an admin or supervisor then
+      do the project page where you can see all the enrolled users, and where
+      you can check out their workspaces.
 
     """
     if not current_user.current_project:
@@ -30,16 +39,30 @@ def home():
         else:
             return redirect(url_for('settings'))
 
-@app.route("/admin",methods=["GET","POST"])
+@app.route("/admin", methods=["GET","POST"])
 @login_required
 @roles_required("administrator")
 def admin():
     """
-    Admin only view for administering the Fieldwork Online site. Admins can:
+    The admin view is available only to administrators (see @roles_required
+    decorator) and lets admin users:
 
-    - Create new projects
-    - View existing projects and invite keys
-    - View regsitered users and add/remove roles from them
+    * Create new projects (action=project_create)
+
+    * View existing projects and the invitation keys for those projects
+
+    * View registered users and add/remove roles from them (action=rem_role or
+      action=add_role)
+
+    Todo:
+
+    * GET should ideally not be used to modify server side state. Maybe move
+      this add/remove role stuff to a different view accessible at:
+
+      /admin/<username>/<role_name>/toggle
+      /admin/<username>/<role_name>/add (or remove)
+
+      And redirect back to the admin view using redirect(url_for('admin', ... ))
 
     """
     if request.method=="POST":
@@ -70,16 +93,19 @@ def admin():
             return redirect(url_for('admin'))
     return render_template("admin.html",users=User.query.all(),campaigns=Campaign.query.all(),roles=Role.query.all())
 
-@app.route("/settings",methods=["GET","POST"])
+@app.route("/settings", methods=["GET","POST"])
 @login_required
 def settings():
     """
-    Settings page lets users:
+    The settings view lets logged in users (with all roles):
 
-    - View their own settings
-    - Choose a fieldwork project (that they're enrolled in) to work on
-    - Use an invite key to enroll themselves in a project.
+    * View their own settings
 
+    * Choose a fieldwork project (that they're enrolled in) to work on. This
+      will set the user's current_project.
+
+    * Use an invite key (which would be given to the user by a teacher or
+      supervisor) to enroll themselves in a project.
     """
     if request.method=="POST":
         if current_user.enroll_with_invite_key(request.form.get("invite_key","")):
@@ -97,417 +123,604 @@ def settings():
 @app.route("/manual/",methods=["GET","POST"])
 @login_required
 def manual():
+    """
+    View which displays the user manual for the website. There is no logic
+    here, just render the manual.html template and that's it.
+    """
     return render_template("manual.html")
 
 @app.route("/projects/",methods=["GET","POST"])
 @login_required
 def project_list():
+    """
+    The project_list view is no longer in use. Accessing the "projects" page
+    implies that you don't know what project you want to work on, so redirect
+    the user to the settings page where he can pick a project to work on.
+    """
     flash("You can choose a project to work on from your settings page.","info")
     return redirect(url_for('settings'))
 
-#
-#
-# View for the project page. This is an admin/supervisor only view and shows an overview
-# of the project, lettings viewers look at another users workspace, upldate the basemap,
-# or enroll other users manually.
-#
-#
 @app.route("/projects/<slug>/",methods=["GET","POST"])
 @login_required
 def project(slug=None):
     """
-    Shows the main project view for supervisors. It has a list of users and links to enroll other users which are not participating in the project yet. It is also possible to update the basemap for the project here by uploading a zip file (which will be unzipped) or individual files into the project's basemap directory.
+    The project view is the "homepage" of a certain fieldwork project/
+    campaign. It has a list of users and links to enroll other users which are
+    not participating in the project yet.
 
-    If this view is requested by a student user, the user is redirected directly to the student's project page.
+    Note! This view is available only to supervisor or administrative users! A
+    student user is redirected automatically to their workspace page on the
+    "maps" view. We don't use the @roles_required decorator here because that
+    would give a permission denied error rather than redirect the user to their
+    workspace page.
+
+    Supervisors and admins can use this view to:
+
+    * Upload background maps for this project.
+
+    * Manually enroll users.
+
+    * View workspaces of enrolled users.
+
+    Todo:
+
+    * The code in this view is a bit of a mess. Refactor and clean it up a bit.
+
+    * Uploading of zip files is no longer necessary if we're not using QGIS
+      anymore. Remove that as well.
+
+    * Letting supervisors know that a new comment has been posted using a
+      comment icon is not working properly. It uses the last_comment_for()
+      method on a user, but needs fixing.
+
     """
-    project=Campaign.query.filter_by(slug=slug).first_or_404()
-    
-    #Set the users working on 
-    current_user.current_project=project.id
+
+    #Fetch the project and the campaign user
+    project = Campaign.query.filter_by(slug=slug).first_or_404()
+    cu = CampaignUsers.query.filter(CampaignUsers.campaign_id==project.id, CampaignUsers.user_id==current_user.id).first()
+
+    #Set the user's current_project to this project, and commit the change.
+    current_user.current_project = project.id
     db.session.commit()
-    
 
-    if current_user.is_admin or current_user.is_supervisor:
-        cu=CampaignUsers.query.filter(CampaignUsers.campaign_id==project.id,CampaignUsers.user_id==current_user.id).first()
-        #
-        #If user is an admin or supervisor, show the project overview page
-        #
-        if request.method=="POST":
-            f = request.files['uploadfile']
-            if f and request.form.get("action","")=="upload":
-                if f.filename.endswith(".zip"):
-                    try:
-                        upload_file=os.path.join(project.projectdata,"map",f.filename)
-                        f.save(upload_file)
-                        #Don't use zipfile with context manager on py 2.6
-                        #https://bugs.launchpad.net/horizon/+bug/955994
-                        zf=zipfile.ZipFile(upload_file)
-                        zip_filelist=zf.namelist()
-                        zip_details="Extracted %s files: <code>"%(len(zip_filelist))+"</code> <code>".join(zip_filelist)+"</code>"
-                        zf.extractall(os.path.join(project.projectdata,"map"))
-                        flash("Zip file detected! %s"%zip_details,"ok")
-                        project.basemap_version=db.func.now()
-                        db.session.commit()
-                        flash("File <code>%s</code> was uploaded to the project basemap. Timestamp: <code>%s</code>"%(f.filename,project.basemap_version),"ok")
-                    except Exception as e:
-                        flash("Zip file could not be extracted! Hint: %s"%(e),"error")
-                if f.filename.endswith(".tif"):
-                    try:
-                        basemaps=os.path.join(project.projectdata,"backgroundlayers")
-                        if not os.path.isdir(basemaps):
-                            os.makedirs(basemaps)
-                        upload_file=os.path.join(basemaps,f.filename)
-                        f.save(upload_file)
-                        #project.background_layers_update()
-                        (head,tail)=os.path.split(upload_file)
-                        name=tail.split(".")[0]
+    #Redirect the user if they're not an admin or supervisor
+    if not current_user.is_admin and not current_user.is_supervisor:
+        return redirect(url_for('project_maps', slug=project.slug, user_id=current_user.id))
 
-                        l=BackgroundLayer.query.filter_by(campaign_id=project.id,name=name).first()
-                        if l==None:
-                            #make new one
-                            db.session.add(BackgroundLayer(
-                                campaign_id=project.id,
-                                name=name,
-                                filename=upload_file
-                            ))
-                        else:
-                            flash("Background layer with this name exists already... updating instead!")
-                            #udpate it..
-                            l.name=name
-                            l.filename=upload_file
-
-                        db.session.commit()
-                        project.background_layers_update()
-                        flash("Saved tiff file to project basemaps dir. make mapserver mapfile.","ok")
-                    except Exception as e:
-                        flash("Tif file could not be saved. Hint: %s"%(e),"error")
-
-            elif request.form.get("action","")=="clearall":
-                flash("Clearing all basemap data!","ok")
-            elif request.form.get("action","")=="reload":
-                project.basemap_update()
-        if request.method=="GET":
-            if request.args.get("action","")=="reload" and request.args.get("user_id","") != "":
-                project.basemap_update(request.args.get("user_id",""))
-                return redirect(url_for('project',slug=project.slug))
-            if request.args.get("action","")=="enroll" and request.args.get("user_id","") != "":
-                project.enroll_user(request.args.get("user_id",""))
-                return redirect(url_for('project',slug=project.slug))
-            if request.args.get("action","")=="deroll" and request.args.get("user_id","") != "":
-                project.deroll_user(request.args.get("user_id",""))
-                return redirect(url_for('project',slug=project.slug))
-            if request.args.get("action","")=="toggleflag" and request.args.get("user_id","") != "":
-                try:
-                    if cu==None:
-                        flash("You are not enrolled in this project, therefore it is not possible to flag users.","error")
-                    else:
-                        user=User.query.filter(User.id==int(request.args.get("user_id",""))).first()
-                        cuf=CampaignUsersFavorites.query.filter(CampaignUsersFavorites.campaignusers_id==cu.id).filter(CampaignUsersFavorites.user_id==user.id).first()
-                        if cuf==None:
-                            #make a new entry
-                            cu.favorites.append(CampaignUsersFavorites(user_id=user.id))
-                            flash("Flagged user <code>%s</code>"%(user.username),"info")
-                        else:
-                            db.session.delete(cuf)
-                            flash("Unflagged user <code>%s</code>"%(user.username),"info")
-                        db.session.commit()
-                except Exception as e:
-                    flash("Something went wrong adding favorite: Hint: %s"%(e))
-                return redirect(url_for('project',slug=project.slug))
-
-        #users=User.query.filter(User.campaigns.contains(project)).all()
+    #If the request method is POST we're probably trying to upload a file
+    #like a basemap to the project.
+    if request.method=="POST":
+        f = request.files['uploadfile']
+        filename = os.path.join(project.projectdata, "backgroundlayers", secure_filename(f.filename))
         
-        #role_student=Role.query.filter(Role.name=='student').first()
-        role_supervisor=Role.query.filter(Role.name=='supervisor').first()
-        role_admin=Role.query.filter(Role.name=='administrator').first()
-        
-        students=User.query.\
-            filter(User.campaigns.contains(project)).\
-            filter(~User.roles.contains(role_supervisor)).\
-            filter(~User.roles.contains(role_admin))
-
-        supervisors=User.query.\
-            filter(User.campaigns.contains(project)).\
-            filter(User.roles.contains(role_supervisor)|User.roles.contains(role_admin)).all()
-        
-        enrollable_users=User.query.filter(~User.campaigns.contains(project)).all()
-        backgroundlayers=BackgroundLayer.query.filter_by(campaign_id=project.id).all()
-        comments=current_user.last_comment_for(campaign_id=project.id)
-        
-        
-        #
-        #todo: fix if cu==None
-        #
-        favorite_user_ids=[]
-        if cu != None:
-            favorite_user_ids=[cuf.user_id for cuf in cu.favorites]
-        
-        students_flagged=[]
-        students_notflagged=[]
-        if len(favorite_user_ids)>0:
-            students_flagged=students.filter(User.id.in_(favorite_user_ids)).all()
-            students_notflagged=students.filter(~User.id.in_(favorite_user_ids)).all()
+        #Create the new layer with the uploaded file.
+        try:
+            #Always delete any backgroundlayers which share the same filename.        
+            BackgroundLayer.query.filter(BackgroundLayer.filename == filename).delete()
+            #Save the uploaded file
+            f.save(filename)
+            #Create the new background layer using the new file
+            backgroundlayer = BackgroundLayer(filename)
+            #Add it to the project
+            project.backgroundlayers.append(backgroundlayer)
+            #Update the project's backgroundlayers.map mapserver configuration file
+            project.background_layers_update()            
+            #Commit changes
+            db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            flash("Failed to create background layer from file. Hint: %s"%(e),"error")
         else:
-            students_notflagged=students.all()
-        
-        students_all=[]
-        students_all.extend(students_flagged)
-        students_all.extend(students_notflagged)
-        return render_template("project.html",project=project,supervisors=supervisors,students=students_all,enrollable_users=enrollable_users,backgroundlayers=backgroundlayers,comments=comments,favorite_user_ids=favorite_user_ids)
+            flash("Added background layer %s"%(backgroundlayer.name),"ok")
+            
+
+    #If the request method is GET it depends a little bit. If there is an
+    #"action" variable we need to actually do something like enroll or toggle
+    #a user. If there is no action variable we do the default thing, which is
+    #render the template with a list of users, an upload form, and a bunch of
+    #buttons.
+    if request.method=="GET":
+        if request.args.get("action","")=="enroll" and request.args.get("user_id","") != "":
+            project.enroll_user(request.args.get("user_id",""))
+            return redirect(url_for('project',slug=project.slug))
+        if request.args.get("action","")=="deroll" and request.args.get("user_id","") != "":
+            project.deroll_user(request.args.get("user_id",""))
+            return redirect(url_for('project',slug=project.slug))
+        if request.args.get("action","")=="toggleflag" and request.args.get("user_id","") != "":
+            try:
+                if cu==None:
+                    flash("You are not enrolled in this project, therefore it is not possible to flag users.","error")
+                else:
+                    user=User.query.filter(User.id==int(request.args.get("user_id",""))).first()
+                    cuf=CampaignUsersFavorites.query.filter(CampaignUsersFavorites.campaignusers_id==cu.id).filter(CampaignUsersFavorites.user_id==user.id).first()
+                    if cuf==None:
+                        #make a new entry
+                        cu.favorites.append(CampaignUsersFavorites(user_id=user.id))
+                        flash("Flagged user <code>%s</code>"%(user.username),"info")
+                    else:
+                        db.session.delete(cuf)
+                        flash("Unflagged user <code>%s</code>"%(user.username),"info")
+                    db.session.commit()
+            except Exception as e:
+                flash("Something went wrong adding favorite: Hint: %s"%(e))
+            return redirect(url_for('project',slug=project.slug))
+
+    #No action was defined. Fetch the students and supervisors, and just render
+    #the project.html template to show the overview of the project.
+
+    #users=User.query.filter(User.campaigns.contains(project)).all()
+    #role_student=Role.query.filter(Role.name=='student').first()
+    role_supervisor=Role.query.filter(Role.name=='supervisor').first()
+    role_admin=Role.query.filter(Role.name=='administrator').first()
+
+    students=User.query.\
+        filter(User.campaigns.contains(project)).\
+        filter(~User.roles.contains(role_supervisor)).\
+        filter(~User.roles.contains(role_admin))
+
+    supervisors=User.query.\
+        filter(User.campaigns.contains(project)).\
+        filter(User.roles.contains(role_supervisor)|User.roles.contains(role_admin)).all()
+
+    enrollable_users=User.query.filter(~User.campaigns.contains(project)).all()
+    backgroundlayers=BackgroundLayer.query.filter_by(campaign_id=project.id).all()
+    comments=current_user.last_comment_for(campaign_id=project.id)
+
+    #
+    #todo: fix if cu==None
+    #
+    favorite_user_ids=[]
+    if cu != None:
+        favorite_user_ids=[cuf.user_id for cuf in cu.favorites]
+
+    students_flagged=[]
+    students_notflagged=[]
+    if len(favorite_user_ids)>0:
+        students_flagged=students.filter(User.id.in_(favorite_user_ids)).all()
+        students_notflagged=students.filter(~User.id.in_(favorite_user_ids)).all()
     else:
-        #
-        #Else forward the user to the user's fieldwork homepage
-        #
-        return redirect(url_for('project_maps',slug=project.slug,user_id=current_user.id))
+        students_notflagged=students.all()
 
+    students_all=[]
+    students_all.extend(students_flagged)
+    students_all.extend(students_notflagged)
+    return render_template("project.html", project=project, supervisors=supervisors, students=students_all, enrollable_users=enrollable_users, backgroundlayers=backgroundlayers,comments=comments,favorite_user_ids=favorite_user_ids)
 
-#
-#
-# Main views for info in a user's workspace: Overview - Data - Maps - Feedback - Collaborate
-#
-#
+@app.route("/projects/<slug>/backgroundlayers/<int:backgroundlayer_id>")
+@login_required
+@roles_required("administrator")
+def backgroundlayer_preview(slug=None, backgroundlayer_id=None):
+    """
+    Shows a simple preview and debug information on a background layer.
+    """
+    project = Campaign.query.filter_by(slug=slug).first_or_404()
+    backgroundlayer = BackgroundLayer.query.filter_by(id=backgroundlayer_id).first_or_404()
+    
+    #Check if mapserver is reachable.
+    mapserver_request = requests.get(app.config["MAPSERVER_URL"])
+    return render_template("backgroundlayer_preview.html", project=project, backgroundlayer=backgroundlayer, mapserver_request=mapserver_request)
+
 @app.route("/projects/<slug>/<user_id>/")
 @login_required
-def project_overview(slug=None,user_id=None):
-    project=Campaign.query.filter_by(slug=slug).first_or_404()
-    user=User.query.filter_by(id=user_id).first_or_404()
+def project_overview(slug=None, user_id=None):
+    """
+    The project overview view is not really used at the moment because users
+    are always viewing the data, maps, or comments and feedback page. This
+    view could be used later perhaps to show an overview of the project to
+    student users.
+    """
+    project = Campaign.query.filter_by(slug=slug).first_or_404()
+    user = User.query.filter_by(id=user_id).first_or_404()
     if (user.id != current_user.id) and (not current_user.is_supervisor) and (not current_user.is_admin):
         abort(403)
-    return render_template("project/overview.html",project=project,user=user)
-
-@app.route("/projects/<slug>/<user_id>/data",methods=["GET"])
-@login_required
-def project_data(slug,user_id):
-    project=Campaign.query.filter_by(slug=slug).first_or_404()
-    user=User.query.filter_by(id=user_id).first_or_404()
-    if (user.id != current_user.id) and (not current_user.is_supervisor) and (not current_user.is_admin):
-        abort(403)
-    attachments=project.attachments(user_id)
-    features=project.features(user_id)
-    return render_template("project/data.html",project=project,user=user,attachments=attachments,features=features)
+    return render_template("project/overview.html", project=project,user=user)
 
 @app.route("/projects/<slug>/<user_id>/maps")
 @login_required
-def project_maps(slug,user_id):
-    project=Campaign.query.filter_by(slug=slug).first_or_404()
-    user=User.query.filter_by(id=user_id).first_or_404()
+def project_maps(slug, user_id):
+    """
+    The project_maps view shows a table with the observation layers and the
+    background layers, as well as an OpenLayers map with the user's
+    observations. Most of the magic here is happening client side in the
+    JavaScript code.
+    """
+    project = Campaign.query.filter_by(slug=slug).first_or_404()
+    user = User.query.filter_by(id=user_id).first_or_404()
+    cu = CampaignUsers.query.filter(CampaignUsers.campaign_id==project.id, CampaignUsers.user_id==user.id).first_or_404()
+
+    #Ensure you can only see your own data, unless you're an admin or supervisor.
     if (user.id != current_user.id) and (not current_user.is_supervisor) and (not current_user.is_admin):
         abort(403)
-    cu=CampaignUsers.query.filter(CampaignUsers.campaign_id==project.id,CampaignUsers.user_id==user.id).first()
-    if not project.basemap:
-        flash("No basemap has been uploaded by the project administrator yet.","info")
-        return render_template("project/empty.html",project=project,user=user)
-    else:
-        mapfile=project.basemap_for(user_id)
-        return render_template("project/maps.html",project=project,user=user,wms_key=cu.wms_key,mapfile=mapfile,mapserver_url=app.config.get("MAPSERVER_URL"))
+
+    observationlayers = ObservationLayer.query.filter_by(user_id=user_id, campaign_id=project.id).all()
+    return render_template("project/maps.html", observationlayers=observationlayers, project=project, user=user)
 
 
 @app.route("/projects/<slug>/<user_id>/feedback",methods=["GET","POST"])
 @login_required
-def project_feedback(slug,user_id):
-    project=Campaign.query.filter_by(slug=slug).first_or_404()
-    user=User.query.filter_by(id=user_id).first_or_404()
+def project_feedback(slug, user_id):
+    """
+    The project_feedback view does one of two things depending on the request
+    method:
+
+    POST: Create a new Feedback instance and save it to the database. The forms
+          for posting feedback are aimed at this view.
+
+    GET:  Redirect the user to the project_feedback_detail view for the latest
+          feedback item in the database. If there is no feedback found at all,
+          render an empty template and flash() an error message.
+    """
+    project = Campaign.query.filter_by(slug=slug).first_or_404()
+    user = User.query.filter_by(id=user_id).first_or_404()
+
+    #Ensure you can only see your own data, unless you're an admin or supervisor.
     if (user.id != current_user.id) and (not current_user.is_supervisor) and (not current_user.is_admin):
         abort(403)
-    cu=CampaignUsers.query.filter(CampaignUsers.campaign_id==project.id,CampaignUsers.user_id==user.id).first()
+
+    cu = CampaignUsers.query.filter(CampaignUsers.campaign_id==project.id,CampaignUsers.user_id==user.id).first_or_404()
+
+    #POSting here means we want to create a new comment/feedback instance
     if request.method=="POST":
-        #Posting some feedback/comment or a reply to one
+
+        #The comment_parent indicates the feedback parent item. All new feedback
+        #does not have a parent (it will be None) and all replies will have
+        #another Feedback instance as a parent.
+        try: comment_parent=Feedback.query.get(int(request.form.get('comment_parent','')))
+        except: comment_parent=None
+
         try:
-            comment_parent=int(request.form.get('comment_parent',''))
-        except:
-            comment_parent=None
-            
-        #A new comment
-        try:
-            db.session.add(Feedback(
+            #Try to add the feedback to the database.
+            feedback = Feedback(
                 user_id=user.id,
                 campaign_id=project.id,
                 comment_by=current_user.id,
                 comment_body=request.form.get('comment_body',''),
-                comment_parent=comment_parent,
+                parent=comment_parent,
                 map_state=request.form.get('map_state',''),
                 map_view=request.form.get('map_view',''),
                 map_marker=request.form.get('map_marker','')
-            ))
+            )
+            db.session.add(feedback)
             db.session.commit()
-            return jsonify(status="OK",message="Feedback posted!"),200
         except Exception as e:
+            #Rollback if there is a screwup
+            db.session.rollback()
             return jsonify(status="FAIL",message="Something went wrong trying to add feedback. Hint: %s"%(e)),500
-#        else:
-#            
-#            #A reply to an existing comment. This is stored as a FeedbackReply.
-#            parent=Feedback.query.get(int(request.form.get('comment_parent')))
-#            parent.replies.append(
-#                FeedbackReply(request.form.get('comment_body'),current_user.id)            
-#            )
-#            db.session.commit()
-#            
-            
-    feedback=Feedback.query.filter_by(user_id=user.id,campaign_id=project.id).order_by("comment_date desc").all()
-    if not feedback:
-        flash("No feedback has been left in this project yet.","info")
-        return render_template("project/empty.html",project=project,user=user)
-    else:
-        return render_template("project/feedback.html",project=project,user=user,feedback=feedback,wms_key=cu.wms_key)
+        else:
+            #If there is no screwup, either show an OK message in JSON, or
+            #redirect the user to that specific comment parent.
+            if comment_parent:
+                #if this is a reply from the comment detail page, redirect back to it.
+                return redirect(url_for('project_feedback_detail', slug=project.slug, user_id=user.id, comment_id=comment_parent.id))
+            else:
+                #otherwise just return a json ok reply.
+                return jsonify(status="OK",message="Feedback posted!"),200
 
-@app.route("/projects/<slug>/<user_id>/feedback.json",methods=["GET","POST"])
+    #GETting this redirects you to the most recent feedback item.
+    if request.method=="GET":
+        #Get feedback, order by comment_date, get the first item.
+        feedback = Feedback.query.filter_by(user_id=user.id, campaign_id=project.id).order_by("comment_date desc").first()
+        if not feedback:
+            #If the doesn't exist, flash an error message
+            flash("No feedback has been left in this project yet.","info")
+            return render_template("project/empty.html")
+        else:
+            #Or redirect the user if we've found something.
+            return redirect(url_for('project_feedback_detail', slug=project.slug, user_id=user.id, comment_id=feedback.id))
+
+
+@app.route("/projects/<slug>/<user_id>/feedback/<int:comment_id>",methods=["GET","POST"])
 @login_required
-def project_feedback_json(slug,user_id):
-    project=Campaign.query.filter_by(slug=slug).first_or_404()
-    user=User.query.filter_by(id=user_id).first_or_404()
+def project_feedback_detail(slug, user_id, comment_id):
+    """
+    View for comment details. If the comment is in fact a reply to another
+    comment (i.e. it has a parent) then redirect the user to that detail page.
+    If the comment does not have a parent, render it (along with the map and
+    any possible replies) using the project/feedback.html template.
+    """
+    project = Campaign.query.filter_by(slug=slug).first_or_404()
+    user = User.query.filter_by(id=user_id).first_or_404()
+    feedback = Feedback.query.filter_by(id=comment_id).first_or_404()
+    if feedback.parent:
+        #If the user is requesting a comment which is a reply to another comment,
+        #then redirect straight to the parent comment's page.
+        return redirect(url_for('project_feedback_detail', slug=project.slug, user_id=user.id, comment_id=feedback.parent.id))
+    else:
+        #If the comment does not have a parent, render the project/feedback.html
+        #template with the appropriate content.
+        recentcomments = Feedback.query.filter_by(user_id=user.id, campaign_id=project.id, parent=None).order_by("comment_date desc").all()
+        return render_template("project/feedback.html", project=project, user=user, feedback=feedback, recentcomments=recentcomments)
+
+@app.route("/projects/<slug>/<user_id>/data",methods=["GET"])
+@login_required
+def project_data(slug,user_id):
+    """
+    The project data view shows a list of ObservationLayers for this user in
+    this project, and a list of files that have been uploaded by the user in
+    this project. The template additionally shows an upload form in which
+    multiple files can be uploaded.
+
+    The actual file upload is not handled in this view, but the files are
+    POSTed to the project_file view at /projects/<slug>/<user_id>/file, where
+    Excel sheets are turned into point databases, and other files are just
+    stored locally.
+    """
+    project = Campaign.query.filter_by(slug=slug).first_or_404()
+    user = User.query.filter_by(id=user_id).first_or_404()
     if (user.id != current_user.id) and (not current_user.is_supervisor) and (not current_user.is_admin):
         abort(403)
-    cu=CampaignUsers.query.filter(CampaignUsers.campaign_id==project.id,CampaignUsers.user_id==user.id).first()
+    attachments = project.attachments(user_id)
+    observationlayers = ObservationLayer.query.filter_by(user_id=user_id, campaign_id=project.id).all()
+    return render_template("project/data.html",project=project, user=user, attachments=attachments, observationlayers=observationlayers)
+
+@app.route("/projects/<slug>/<user_id>/data/<safe_name>.geojson",methods=["GET"])
+@login_required
+def project_data_layer(slug,user_id,safe_name):
+    """
+    The project_data_layer view serves a GeoJSON featurecollection of all the
+    points and attributes found in a particular observationlayer (defined by
+    its safe_name). This geojson file is used by the OpenLayers map to display
+    the user's observations as well. The GeoJSON is generated by the
+    "as_featurecollection()" method of the ObservationLayer instance.
+
+    Todo:
+
+    * Technically this view is not necessary, as we can also link directly to
+      the project_data_download view without the need to be logged in then.
+      The mapping interface too should be able to load in GeoJSON files from
+      the project_data_download view as well rather than this one which
+      requires the user to be logged in.
+
+    """
+    project = Campaign.query.filter_by(slug=slug).first_or_404()
+    user = User.query.filter_by(id=user_id).first_or_404()
+    layer = ObservationLayer.query.filter_by(safe_name=safe_name, user_id=user.id, campaign_id=project.id).first_or_404()
     if (user.id != current_user.id) and (not current_user.is_supervisor) and (not current_user.is_admin):
-        return render_template("denied.html")
-    feedback=Feedback.query.filter_by(user_id=user.id,campaign_id=project.id,comment_parent=None).order_by("comment_date desc").all()
-    if not feedback:
-        return jsonify([]),200
-    else:
-        f=[]
-        for comment in feedback:
-            replies=[]
-            for reply in comment.all_replies:
-                replies.append({
-                    'reply_by':reply.comment_by_user.username,
-                    'comment_age':reply.comment_age,
-                    'comment_body':escape(reply.comment_body)
-                })
-            f.append({
-                'id':comment.id,
-                'comment_by':comment.comment_by_user.username,
-                'comment_age':comment.comment_age,
-                'comment_body':escape(comment.comment_body),
-                'map_state':comment.map_state,
-                'map_view':comment.map_view,
-                'map_marker':comment.map_marker,
-                'replies':replies
-            })
-            
-        return json.dumps(f),200
-        #return render_template("project/feedback.html",project=project,user=user,feedback=feedback,wms_key=cu.wms_key)
+        abort(403)
+    return jsonify(layer.as_featurecollection()),200
+
+@app.route("/<string:project_key>/<string:safe_name>.geojson",methods=["GET"])
+def project_data_download(project_key, safe_name):
+    """
+    The project_data_download view is similar in functionality to the
+    project_data_layer view, except that the URL used to access it is
+    different, and that no @login_required decorator is present. As such, this
+    view can be used for external applications which cannot log in to the
+    Fieldwork Online application. The "project_key" variable is stored in the
+    CampaignUsers model and is a random string, allowing this users' data to
+    be downloaded from a URL like:
+
+    /7j7c3pafxekg/fwo_netherlands_airports.geojson
+
+    Todo:
+
+    * Other formats could be added here as well, perhaps using a different
+      route like /<string:project_key>/<string:safe_name>/<format>, allowing
+      external parties or scripts to download your data like:
+
+      /7j7c3pafxekg/fwo_netherlands_airports/shapefile
+
+      or:
+
+      /7j7c3pafxekg/fwo_netherlands_airports/spatialite
+
+      Which would then show a download prompt with the data you're requested.
+      Nice to do if there is some time somewhere. Don't forget to update the
+      references to this url that are in templates with
+      url_for('project_data_download' ... ).
+    """
+    cu = CampaignUsers.query.filter(CampaignUsers.wms_key==project_key).first_or_404()
+    project = Campaign.query.get(cu.campaign_id)
+    user = User.query.get(cu.user_id)
+    layer = ObservationLayer.query.filter_by(safe_name=safe_name, user_id=user.id, campaign_id=project.id).first_or_404()
+    return jsonify(layer.as_featurecollection()),200
+
+@app.route("/projects/<slug>/<user_id>/data/map-layers.json", methods=["GET"])
+@login_required
+def project_data_maplayers(slug, user_id):
+    """
+    Returns a JSON document containing an array with the map layers that are
+    shown in the OpenLayers map. This document is fetched by client-side
+    JavaScript (see fieldworkonline-map.js) and then parsed to make proper
+    layers for the OpenLayers map.
+    """
+    project = Campaign.query.filter_by(slug=slug).first_or_404()
+    user = User.query.filter_by(id=user_id).first_or_404()
+
+    #Ensure you can only see your own data, unless you're an admin or supervisor.
+    if (user.id != current_user.id) and (not current_user.is_supervisor) and (not current_user.is_admin):
+        abort(403)
+
+    observationlayers = ObservationLayer.query.filter_by(user_id=user_id, campaign_id=project.id).all()
+
+    #Create a layers array containing a dict for each layer.
+    layers=[]
+    layers.append({
+        'name':'bing-road',
+        'label':'Bing Road',
+        'type':'background'
+    })
+    layers.append({
+        'name':'bing-aerial',
+        'label':'Bing Aerial',
+        'type':'background'
+    })
+    
+    for backgroundlayer in project.backgroundlayers:
+        layers.append({
+            'name':backgroundlayer.name,
+            'label':backgroundlayer.name,
+            'type':'wms',
+            'attributes':{
+                'mapserver_url':app.config["MAPSERVER_URL"],
+                'mapserver_layer':backgroundlayer.name,
+                'mapserver_mapfile':project.background_layers_mapfile
+            }
+        })
+        
+    for observationlayer in observationlayers:
+        layers.append({
+            'name':observationlayer.safe_name,
+            'label':observationlayer.name,
+            'type':'geojson',
+            'attributes':{
+                'url':url_for('project_data_layer', slug=project.slug, user_id=user.id, safe_name=observationlayer.safe_name),
+                'color':observationlayer.color
+            }
+        })
+    return jsonify(layers=layers),200
+
 
 @app.route("/projects/<slug>/<user_id>/collaborate")
 @login_required
 def project_collaborate(slug,user_id):
-    project=Campaign.query.filter_by(slug=slug).first_or_404()
-    user=User.query.filter_by(id=user_id).first_or_404()
+    """
+    The project_collaborate view is intented to provide some basic
+    functionality which lets users share or export the data they're uploaded
+    into the Fieldwork Online application. The actual code for doing this is
+    usually in other views (like the geojson download), but this page serves
+    as an easy to understand overview.
+
+    Todo: (several ideas for improvement)
+
+    * Make a "download all your data" link, which makes a zipfile of all your
+      data and redirects the user to some sort of download view for it.
+
+    * Make a "download as shapefile/spatialite/? format for your observation
+      data. Once this is implemented in the project_data_download view a link
+      can be added here quite easily.
+
+    """
+    project = Campaign.query.filter_by(slug=slug).first_or_404()
+    user = User.query.filter_by(id=user_id).first_or_404()
+    cu = CampaignUsers.query.filter(CampaignUsers.campaign_id==project.id,CampaignUsers.user_id==user.id).first_or_404()
+
+    #Ensure you can only see your own data, unless you're an admin or supervisor.
     if (user.id != current_user.id) and (not current_user.is_supervisor) and (not current_user.is_admin):
         abort(403)
 
-    cu=CampaignUsers.query.filter(CampaignUsers.campaign_id==project.id,CampaignUsers.user_id==user.id).first()
-    return render_template("project/collaborate.html",project=project,user=user,cu=cu)
+    observationlayers = ObservationLayer.query.filter_by(user_id=user_id, campaign_id=project.id).all()
+    return render_template("project/collaborate.html", project=project, user=user, cu=cu, observationlayers=observationlayers)
 
-#
-#
-# Additional views for workspaces to take care of file uploads/viewing and enrollment
-#
-#
 @app.route("/projects/<slug>/<user_id>/file",methods=["GET","POST","HEAD"])
 @login_required
 def project_file(slug,user_id):
-    project=Campaign.query.filter_by(slug=slug).first_or_404()
-    user=User.query.filter_by(id=user_id).first_or_404()
+    """
+    The project_file view actually handles the uploading (POST) and downloading
+    (GET) of files in a user's project workspace. For POST requests:
+
+    * Save the file in the userdata directory (project.userdata(user.id))
+
+    * If the file is an excel file, import "excel_parser" from utils, and run
+      it on the excel file. This will turn the sheets into a bunch of
+      observationlayers which are then committed to the database.
+
+    For GET or HEAD requests:
+
+    * If you're GETting an image file with the png, jpg, or jpeg extension,
+      serve it by returning an image.
+
+    * If it's not an image, use Flask's send_from_directory() with the
+      as_attachment keyword argument to serve it as a download. The browser
+      will show a download dialog in this case.
+
+    * A HEAD request can be used to check if the file even exists or not,
+      without sending all the data.
+
+    Todo:
+
+    * Turning the output of excel_parser() into Observations and
+      ObservationLayers is still a bit messy. This could be cleaned up a little
+      better.
+
+    """
+    project = Campaign.query.filter_by(slug=slug).first_or_404()
+    user = User.query.filter_by(id=user_id).first_or_404()
+    cu = CampaignUsers.query.filter(CampaignUsers.campaign_id==project.id,CampaignUsers.user_id==user.id).first_or_404()
+
+    #Ensure you can only see your own data, unless you're an admin or supervisor.
     if (user.id != current_user.id) and (not current_user.is_supervisor) and (not current_user.is_admin):
         abort(403)
-    cu=CampaignUsers.query.filter(CampaignUsers.campaign_id==project.id,CampaignUsers.user_id==user.id).first()
-    userdata=project.userdata(user.id)
+
+    #Fetch the userdata directory and store it in the userdata variable. This
+    #directory is where all the files will be uploaded.
+    userdata = project.userdata(user.id)
+
+    #GET or HEAD requests serve data
     if request.method=="HEAD" or request.method=="GET":
         filename=request.args.get("filename","")
         if filename != "":
             as_attachment = True if not filename.lower().endswith((".png",".jpg",".jpeg")) else False
             return send_from_directory(os.path.join(userdata,"attachments"), filename, as_attachment=as_attachment)
+
+    #POST requests store data
     if request.method=="POST":
         try:
+            print "import excel parser"
             from utils import excel_parser
+            print "import excp ok!"
             f = request.files['file']
             if f:
+                print "f found"
                 upload_file=os.path.join(userdata,"attachments",f.filename)
+                print "file ing as %s"%(upload_file)
                 f.save(upload_file)
+                print "file saved as %s"%(upload_file)
                 if f.filename.endswith((".xls",".xlsx")):
-                    spatialite_file=project.features_database(user_id)
-                    (success,message)=excel_parser(upload_file,spatialite_file)
-                    if success==False:
-                        #flash("An error occurred while trying to parse the uploaded Excel sheet. Please recheck your file and try again.","error")
-                        return jsonify(status="FAIL",message=message),500
-                    else:
-                        project.basemap_update(user_id)
-                        cu.update_lastactivity()
-                        #flash("Upload and processing of file <code>%s</code> completed."%(f.filename),"ok")
-                        return jsonify(status="OK",message=message),200
+                    #spatialite_file=project.features_database(user_id)
+
+                    observations=excel_parser(upload_file)
+                    for observation_layer in observations:
+                        title=observations[observation_layer]['title']
+                        points=observations[observation_layer]['observations']
+                        #first delete any other observationlayers with this name
+                        #deleted=ObservationLayer.query.filter_by(user_id=user_id,campaign_id=project.id,name=title).delete()
+                        safe_name=observation_layer
+                        deleted=ObservationLayer.query.filter_by(user_id=user_id,campaign_id=project.id,safe_name=safe_name).delete()
+                        #flash("Deleted %d existing layer"%(deleted))
+                        #db.session.delete(observationlayers)
+                        db.session.commit()
+
+
+
+                        layer=ObservationLayer(user.id, project.id, title, safe_name)
+                        for point in points:
+                            print point
+                            layer.observations.append(Observation(point))
+
+                        db.session.add(layer)
+                        db.session.commit()
+
+
+                    #print observations
+                    #project.basemap_update(user_id)
+
+
+                    cu.update_lastactivity()
+
+                flash("Upload and processing of file <code>%s</code> completed."%(f.filename),"ok")
         except Exception as e:
-            #flash("An unexpected error occurred during the upload. Hint: %s"%(e),"error")
-            return jsonify(status="FAIL",message="Something went wrong trying to process the file. Hint: %s"%(e)),500
+            flash("An error occurred during the upload. Hint: %s"%(e),"error")
     return jsonify(status="OK",message="File uploaded and processed!"),200
-
-
 
 @app.route("/projects/<slug>/<user_id>/enroll")
 @login_required
 @roles_required("administrator")
 def project_enroll(slug=None,user_id=None):
-    project=Campaign.query.filter_by(slug=slug).first_or_404()
-    user=User.query.filter_by(id=user_id).first_or_404()
+    """
+    The project enroll view allows administrator users to enroll users by
+    using a direct link to /projects/<slug>/<user_id>/enroll.
+
+    Todo:
+
+    * Check if this is being used anywhere, it seems not to be the case as
+      enrollments and derollments are handled in the "project" view. So either
+      get rid of those and the links pointing there, or get rid of this one.
+    """
+    project = Campaign.query.filter_by(slug=slug).first_or_404()
+    user = User.query.filter_by(id=user_id).first_or_404()
     project.enroll_user(user.id)
-    return redirect(url_for('project_userlist',slug=slug))
-
-#
-#
-# View for the WMS proxy
-#
-#
-@app.route("/wms/<wms_key>")
-def wmsproxy(wms_key=None):
-    """
-    This view acts as a HTTP proxy for the WMS server. There are a few reasons for going through the trouble of making a proxy:
-
-    - Due to same origin policy the GetFeatureInfo requests need to originate on the same host. By having having a proxy this is guaranteed as the WMS response will always seem to come from the same server as the website, regardless of there the wms is actually located.
-    - Sometimes QGIS server (if CRS restrictions have not been set manually in the project preferences) will return in XML a list of hundreds of allowed CRSes for each layer. This seriously bloats the GetProjectInfo request (it can become a 4MB+ file...). In this proxy we can manually limit the allowed CRSes to ensure the document does not become huge.
-    - QGIS server does not support json responses! Since we are handling a lot of these WMS requests using JavaScript (also the GetFeatureInfo requests) it would be a lot easier, faster, and result in cleaner code, if the WMS server just returned JSON documents. Using this proxy we can add json support if the request argument FORMAT is set to "application/json", and do the conversion serverside with xmltodict. A JSONP callback argument is also supported.
-    - We can camouflage the MAP parameter. This usually takes a full pathname to the map file. However, we dont want to reveal this to the world and let everybody mess about with it. Therefore we can override the MAP parameter in the proxy from the URL, that way the URL for a fieldwork WMS server will be /projects/fieldwork-demo/3/wms?<params> which is a lot neater than /cgi-bin/qgisserv.fcgi?MAP=/var/fieldwork-data/.....etc. There will be no MAP attribute visible to the outside in that case since it is added only on the proxied requests.
-    - There are some opportunities for caching/compressing WMS requests at a later time if we use this method
-    - We can limit access to the fieldwork data to only logged in users, or allow a per-project setting of who should be able to access the wms data. Qgis wms server does not really offer very useful http authentication methods, so this should provide a solution.
-
-    Todo: return data in chunks rather than all in one go.
-    """
-    cu=CampaignUsers.query.filter(CampaignUsers.wms_key==wms_key).first_or_404()
-
-    #project=Campaign.query.filter_by(slug=slug).first_or_404()
-    project=Campaign.query.get(cu.campaign_id)
-    user=User.query.get(cu.user_id)
-    #user=User.query.filter_by(id=user_id).first_or_404()
-
-
-    requestparams=dict(request.args) #we need something which is mutable...
-    #requestparams.pop("MAP") #don't send the map param
-    mapfile=project.basemap_for(user.id)
-    requestparams.update({'MAP':mapfile})
-
-    jsonp=request.args.get("JSONP","")
-    if(jsonp):
-        requestparams.pop("JSONP") #never send a JSONP parameter to the qgis server
-    if(request.args.get("FORMAT","")=="application/json"):
-        requestparams.update({'FORMAT':"text/xml"}) #always request xml from qgis server
-    if(request.args.get("INFO_FORMAT","")=="application/json"):
-        requestparams.update({'INFO_FORMAT':"text/xml"}) #always request xml from qgis server
-    r=requests.get(app.config["WMS_SERVER_URL"],params=requestparams)
-    #print "Proxying request to: "+r.url
-    if r.status_code==200:
-        if r.headers['content-type']=="text/xml" and ( request.args.get("FORMAT","")=="application/json" or request.args.get("INFO_FORMAT","")=="application/json"):
-            #if json was requested and we received xml from the server, then convert it...
-            jsonresponse=json.dumps(xmltodict.parse(r.text.replace(app.config["WMS_SERVER_URL"],request.base_url)), sort_keys=False,indent=4, separators=(',', ': '))
-            jsonresponse=jsonp+"("+jsonresponse+")" if jsonp!="" else jsonresponse
-            return Response(jsonresponse,mimetype="application/json")
-        elif r.headers['content-type']=="text/xml":
-            #if xml was requested and xml was received, then just update the server urls in the response to the url of the wms proxy
-            return Response(r.text.replace(app.config["WMS_SERVER_URL"],request.base_url),mimetype=r.headers['content-type'])
-        else:
-            #all other cases don't modify anything and just return whatever qgis server responded with
-            return Response(r.content,mimetype=r.headers['content-type'])
-    else:
-        return Response("<pre>WMS server at %s returned status %i.</pre>"%(app.config["WMS_SERVER_URL"],r.status_code),mimetype="text/html"),r.status_code
-
-
+    return redirect(url_for('project_userlist', slug=slug))
 
 @app.errorhandler(403)
 def permission_denied(e):
