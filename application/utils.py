@@ -3,8 +3,6 @@ import re
 import json
 from shapely.geometry import Point
 
-#from pyspatialite import dbapi2 as db
-
 from flask import flash
 
 def attribute_type_predictor(attribute_vals):
@@ -89,9 +87,12 @@ def excel_parser(filename):
     
     Todo:
     
-    * Use Python exceptions rather than flashing information everywhere. 
+    * Use Python exceptions rather than flashing information everywhere. Now
+      after uploading you go to another page and see all the debug output, 
+      which is rather messy.
     
     * Refactor and clean this code up a little bit.
+    
     """
     tablenames=[]
     observations={}
@@ -187,7 +188,16 @@ def excel_parser(filename):
                 h["attribute_uniques"]=attribute_uniques(h["attribute_values"])
                 flash("Values for attribute <code>%s</code> (in <code>header_list[%s]</code>) was predicted to have datatype <code>%s</code> with <code>%i</code> total entries, of which <code>%s</code> values were unique."%(h["header"],ix,h["datatype"],len(h["attribute_values"]),h["attribute_uniques"]),"debug")
 
-            #create a table name for this sheet. the name needs to be unique in this database and not contain any funny characters. so, keep track of the tablenames we've used in the tablenames variable, and if a proposed table name exists already, keep appending a number to the end until it finds one that doesn't.
+            #create a table name for this sheet. the name needs to be unique in 
+            #this database and not contain any funny characters. so, keep track 
+            #of the tablenames we've used in the tablenames variable, and if a 
+            #proposed table name exists already, keep appending a number to the 
+            #end until it finds one that doesn't.
+            #
+            #Note: the observations are no longer stored in a separate table
+            #because we use postgis now instead of sqlite. We can still use 
+            #the tablename though to create a unique (and readable) identifier 
+            #for this sheet.
             tablename=re.sub(r'\W+',' ',sheetname).lower()
             tablename="fwo_"+"_".join(map(str,tablename.split()))
             proposed_tablename=tablename
@@ -204,37 +214,12 @@ def excel_parser(filename):
                     'observations':[]
                 }            
             })
-#
-#            cur.execute("SELECT DiscardGeometryColumn('%s','geom');"%(tablename))
-#            conn.commit()
-#
-#            cur.execute("DROP TABLE IF EXISTS %s;"%(tablename))
-#            conn.commit()
-#
-#            cur.execute("""
-#                CREATE TABLE %s (
-#                    fwo_id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-#                    %s
-#                );
-#            """%(tablename,", ".join(["%s %s"%(h["header"],h["datatype"]) for h in header_list])))
-#            conn.commit()
-#
-#
-#            cur.execute("SELECT AddGeometryColumn('%s','geom', %s, 'POINT', 'XY');"%(tablename,epsg))
-#            conn.commit()
-#
-#            cur.execute("DELETE FROM fwo_metadata WHERE name='%s';"%(tablename))
-#            conn.commit()
-#
-#            cur.execute("INSERT INTO fwo_metadata (name,title) VALUES ('%s','%s');"%(tablename,sheetname))
-#            conn.commit()
 
 
-            #compile a list of georeferenced points
             num_points=0
-            for n,(lat,lon) in enumerate(zip(header_list[col_ix_lat]["attribute_values"],header_list[col_ix_lon]["attribute_values"])):
+            for n,(lat,lon) in enumerate(zip(header_list[col_ix_lat]["attribute_values"], header_list[col_ix_lon]["attribute_values"])):
                 try:
-                    pt=Point(lon,lat) #will raise an exception if lon,lat are None or some other incompatible value
+                    pt = Point(lon, lat) #doesn't do anything but will raise an exception if lon,lat are None or some other incompatible value
                     #attr_values=[header["attribute_values"][n] for header in header_list]
                     #attr_names=",".join([header["header"] for header in header_list])
                     point={
@@ -243,25 +228,15 @@ def excel_parser(filename):
                         'epsg':epsg,
                         'properties':{}                    
                     }                    
-                    
+                    flash(str(point),"debug")
                     for header in header_list:
                         point['properties'].update({
                             header["header"]:header["attribute_values"][n]              
                         })
                     
-                                        
-                    
                     observations[tablename]['observations'].append(point)
-                    
-#                    point_sql="INSERT INTO %s (%s,geom) VALUES (%s,GeomFromText('%s',%s))"%(tablename,attr_names,",".join("?"*len(attr_values)),point.wkt,epsg)
-#                    cur.execute(point_sql,attr_values)
                     num_points+=1
                 except Exception as e:
                     flash("Failed to convert the feature in row <code>%i</code> to a valid point. Lat was <code>%s</code> and lon <code>%s</code>. Hint: %s"%(n+2,lat,lon,e),"error")
-            #conn.commit()
-            #description="<code>"+"</code> <code>".join(good_headers)+"</code>"
-            #cur.execute("""
-            #UPDATE fwo_metadata SET features=%s,description='%s' WHERE name='%s';
-            #"""%(num_points,description,tablename))
-            #conn.commit()
+
     return observations

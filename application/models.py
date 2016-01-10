@@ -18,6 +18,7 @@ import datetime
 #import xmltodict
 #import time
 import hashlib
+import pyproj
 
 from osgeo import gdal, osr
 
@@ -927,10 +928,20 @@ class Observation(db.Model):
         properties -> a dictionary of properties of this point. this will be
                       stored in the Observations' properties field, which is 
                       a JSON field capable of storing flexible data.
+                      
+        Because all points (possible with many different coordinate systems 
+        are all stored in a single PostGIS table, we convert them here to 
+        wgs84 lat-lng coordinates.
         """
-        x=point['x']
-        y=point['y']
-        srid=point['epsg']
+        x = point['x']
+        y = point['y']
+        srid = point['epsg']
+        
+        projection = pyproj.Proj("+init=EPSG:%d"%(point['epsg']))
+        if point['epsg'] != 4326:
+            (x, y) = projection(x, y, inverse=True)
+            srid = 4326
+        
         self.geom=WKTElement('POINT(%.5f %.5f)'%(x,y), srid=srid)
         self.properties=json.dumps(point['properties'])
         

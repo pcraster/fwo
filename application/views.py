@@ -671,21 +671,20 @@ def project_file(slug,user_id):
 
                     observations=excel_parser(upload_file)
                     for observation_layer in observations:
-                        title=observations[observation_layer]['title']
-                        points=observations[observation_layer]['observations']
+                        title = observations[observation_layer]['title']
+                        points = observations[observation_layer]['observations']
                         #first delete any other observationlayers with this name
                         #deleted=ObservationLayer.query.filter_by(user_id=user_id,campaign_id=project.id,name=title).delete()
-                        safe_name=observation_layer
-                        deleted=ObservationLayer.query.filter_by(user_id=user_id,campaign_id=project.id,safe_name=safe_name).delete()
+                        safe_name = observation_layer
+                        deleted = ObservationLayer.query.filter_by(user_id=user_id,campaign_id=project.id,safe_name=safe_name).delete()
                         #flash("Deleted %d existing layer"%(deleted))
                         #db.session.delete(observationlayers)
                         db.session.commit()
 
 
 
-                        layer=ObservationLayer(user.id, project.id, title, safe_name)
+                        layer = ObservationLayer(user.id, project.id, title, safe_name)
                         for point in points:
-                            print point
                             layer.observations.append(Observation(point))
 
                         db.session.add(layer)
