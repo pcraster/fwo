@@ -10,7 +10,7 @@
 # define your own application below that.
 #
 import sys
-sys.path.insert(0, '/var/www/fieldwork_online')
+sys.path.insert(0, '/var/www/fwo')
 from application import app as application
 
 #

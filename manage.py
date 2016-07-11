@@ -8,11 +8,11 @@ from flask.ext.script import Manager, Shell, Server
 from application.models import *
 
 manager = Manager(app)
-manager.add_command("runserver",Server())
+manager.add_command("runserver",Server(host='0.0.0.0'))
 manager.add_command("shell",Shell())
 
 def random_password():
-	return ''.join(random.choice("abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789") for _ in range(8))
+	return ''.join(random.choice("abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ2345678") for _ in range(8))
 
 @manager.command
 def createdb():
@@ -72,14 +72,14 @@ def initdb():
 
 	flash("Created <code>administrator</code>, <code>supervisor</code> and <code>student</code> roles.","ok")
 
-	admin = User(username='admin', fullname='Site Admin', email='kokoalberti@yahoo.com', active=True, password=user_manager.hash_password(pw_admin))
+	admin = User(username='admin', fullname='Site Admin', email='r.j.baarsma@outlook.com', active=True, password=user_manager.hash_password(pw_admin))
 	admin.roles.append(Role.query.filter(Role.name=='administrator').first())
 	admin.roles.append(Role.query.filter(Role.name=='supervisor').first())
 
-	supervisor = User(username='supervisor', fullname='Site Supervisor', email='k.alberti@uu.nl', active=True, password=user_manager.hash_password(pw_supervisor))
+	supervisor = User(username='supervisor', fullname='Site Supervisor', email='r.j.baarsma@uu.nl', active=True, password=user_manager.hash_password(pw_supervisor))
 	supervisor.roles.append(Role.query.filter(Role.name=='supervisor').first())
 
-	student = User(username='student', fullname='Sam Student', email='k.alberti@students.uu.nl', active=True, password=user_manager.hash_password(pw_student))
+	student = User(username='student', fullname='Sam Student', email='r.j.baarsma@students.uu.nl', active=True, password=user_manager.hash_password(pw_student))
 	student.roles.append(Role.query.filter(Role.name=='student').first())
 
 	db.session.add_all([admin,supervisor,student])

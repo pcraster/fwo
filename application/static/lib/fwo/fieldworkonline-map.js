@@ -245,7 +245,7 @@ var FWO=$.extend(FWO || {},{
 					new_layer = new ol.layer.Tile({
 						visible: false,
 						preload: Infinity,
-						source: new ol.source.BingMaps({ key: FWO.config["bingmaps_key"], imagerySet: layer['name']=='bing-road' ? 'Road' : 'Aerial' })
+						source: new ol.source.MapQuest({layer: 'osm'})
 					});
 				}
 				/* 

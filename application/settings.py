@@ -8,8 +8,8 @@ CSRF_ENABLED = True
 SQLALCHEMY_DATABASE_URI = '' 
 
 # Development paths...
-APPDIR="/home/koko/code/fieldwork_online/"
-DATADIR="/var/fieldwork-data/"
+APPDIR="/var/www/fwo"
+DATADIR="/var/wwwdata/fwo"
 
 # Configure Flask-Mail -- Required for Confirm email and Forgot password features
 MAIL_SERVER   = 'smtp.gmail.com'
@@ -17,7 +17,7 @@ MAIL_PORT     = 465
 MAIL_USE_SSL  = True                            # Some servers use MAIL_USE_TLS=True instead
 MAIL_USERNAME = 'email@example.com'
 MAIL_PASSWORD = 'password'
-MAIL_DEFAULT_SENDER = '"Sender" <noreply@example.com>'
+MAIL_DEFAULT_SENDER = '"Fieldwork Online" <noreply@fwo.com>'
 
 
 # Configure Flask-User
