@@ -273,7 +273,8 @@ var FWO=$.extend(FWO || {},{
 									point.bindPopup(FWO.util.feature2popup(feature), {
 										autoPan: true,
 										maxHeight: 200,
-										minWidth: 300
+										minWidth: 400,
+										offset: [110,7.5]
 										});
 									/*point.setStyle(function(feature) {
 										fillColor: FWO.util.getColor(feature);
@@ -331,33 +332,38 @@ var FWO=$.extend(FWO || {},{
 		*/
 		feature2popup:function(feature) {
 			/*
-			FWO.popup.util.feature2popup()
+			FWO.util.feature2popup()
 			Convert a feature to a bunch of HTML that can be inserted in a map popup.
 			*/
-			var html="<div id='popup' class='ol-popup' style='display:block;'>"+
-					"<div id='popup-header' style='height:25px;'>"+
-					"<a id='popup-leave-comment' href='#' data-location=''>Leave comments or feedback</a>"+
-					"<span id='popup-title'></span>"+
-					"<a href='#' id='popup-closer' class='ol-popup-closer'><i class='fa fa-times'></i></a>"+
-					"</div>"+
-					"<div id='popup-content'><table class='table table-condensed' style='width:100%;font-size:10pt;margin-bottom:0px;'>"
+			var popupdiv = $("<div id='popup' class='l-popup' style='display:block;'></div>")
+			
+			var popupheader = $("<div id='popup-header' style='height:25px;'>"+
+				"<a id='popup-leave-comment' href='#' data-location=''>Leave comments or feedback</a>"+
+				"<span id='popup-title'></span>"+
+				"</div>")
+			popupdiv.append(popupheader)
+			
+			var popupcontent = $("<div id='popup-content'></div>")
+			var table = $("<table class='table table-condensed' style='width:100%;font-size:10pt;margin-bottom:0px;'></table>")
 			if(feature) {
 				var prop=feature.properties
 				for(var i in prop) {
 					var val=prop[i]
 					if(typeof val=='string' || typeof val=='number') {
 						val=val+""
-						html+="<tr><td style='padding-left:0px;'>"+i+"</td><td>"+FWO.util.attributeValueParser(val)+"</td></tr>"
+						table.append("<tr><td style='padding-left:0px;'>"+i+"</td><td>"+FWO.util.attributeValueParser(val)+"</td></tr>")
 					}
 				}
 			} else {
-				html+="<tr><td colspan='2' style='padding-top:18px;padding-bottom:15px;text-align:center;'>No features were identified at this location.</td></tr>"
+				table.append("<tr><td colspan='2' style='padding-top:18px;padding-bottom:15px;text-align:center;'>No features were identified at this location.</td></tr>")
 			}
-			return html+"</div></div></div></table>"
+			popupcontent.append(table)
+			popupdiv.append(popupcontent)
+			return popupdiv[0]
 		},
 		attributeValueParser:function(value) {
 			/*
-			FWO.popup.util.attributeValueParser()
+			FWO.util.attributeValueParser()
 			Returns a parsed attribute value for in the popup. This checks whether the
 			attribute value is a URL, a filename linking to an uploaded attachment, or
 			a paragraph of text. Depending on the type of data it will turn it into a 

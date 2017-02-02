@@ -335,6 +335,25 @@ def project_maps(slug, user_id):
     observationlayers = ObservationLayer.query.filter_by(user_id=user_id, campaign_id=project.id).all()
     return render_template("project/maps.html", observationlayers=observationlayers, project=project, user=user)
 
+@app.route("/projects/<slug>/<user_id>/maps2")
+@login_required
+def project_maps2(slug, user_id):
+    """
+    The project_maps view shows a table with the observation layers and the
+    background layers, as well as an OpenLayers map with the user's
+    observations. Most of the magic here is happening client side in the
+    JavaScript code.
+    """
+    project = Campaign.query.filter_by(slug=slug).first_or_404()
+    user = User.query.filter_by(id=user_id).first_or_404()
+    cu = CampaignUsers.query.filter(CampaignUsers.campaign_id==project.id, CampaignUsers.user_id==user.id).first_or_404()
+
+    #Ensure you can only see your own data, unless you're an admin or supervisor.
+    if (user.id != current_user.id) and (not current_user.is_supervisor) and (not current_user.is_admin):
+        abort(403)
+
+    observationlayers = ObservationLayer.query.filter_by(user_id=user_id, campaign_id=project.id).all()
+    return render_template("project/maps2.html", observationlayers=observationlayers, project=project, user=user)
 
 @app.route("/projects/<slug>/<user_id>/feedback",methods=["GET","POST"])
 @login_required
@@ -536,13 +555,13 @@ def project_data_maplayers(slug, user_id):
     #Create a layers array containing a dict for each layer.
     layers=[]
     layers.append({
-        'name':'bing-road',
-        'label':'Bing Road',
+        'name':'map',
+        'label':'Mapquest Roads',
         'type':'background'
     })
     layers.append({
-        'name':'bing-aerial',
-        'label':'Bing Aerial',
+        'name':'sat',
+        'label':'Mapquest Satellite',
         'type':'background'
     })
     
@@ -582,6 +601,8 @@ def project_collaborate(slug,user_id):
     as an easy to understand overview.
 
     Todo: (several ideas for improvement)
+    * Make a "download campaign_data" link, where all campaign data is shown
+      per theme and downloadable as GEOJson.
 
     * Make a "download all your data" link, which makes a zipfile of all your
       data and redirects the user to some sort of download view for it.

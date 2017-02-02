@@ -654,6 +654,20 @@ class Campaign(db.Model):
             except Exception as e:
                 pass
         return file_list
+        
+    def campaign_data(self):
+        """
+        Returns a list of GEOJsons for each unique name in all observation
+        layers in the campaign.
+        To Do:
+        -query all observationlayers with campaign_id=self.campaign_id
+        -create a list of all unique names among these observationlayers,
+            and a list of all observationlayers per name
+        -jsonify each name and return the links for each of them.
+        
+        i think
+        """
+        pass
 
 class CampaignUsers(db.Model):
     """
@@ -942,7 +956,7 @@ class Observation(db.Model):
             (x, y) = projection(x, y, inverse=True)
             srid = 4326
         
-        self.geom=WKTElement('POINT(%.5f %.5f)'%(x,y), srid=srid)
+        self.geom=WKTElement('POINT(%.7f %.7f)'%(x,y), srid=srid)
         self.properties=json.dumps(point['properties'])
         
     def as_dict(self):

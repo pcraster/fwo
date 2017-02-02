@@ -5,3 +5,4 @@ test/*
 virtualenv/*
 local_settings.py
 notes.txt*
+gems.wsgi

@@ -83,50 +83,26 @@
       .panel-collapse div.list-group .list-group a.list-group-item {border-top: 1px solid #ddd;border-bottom: 0;padding-left: 30px;}
 
 
-      .ol-popup {
-        display: none;
-        position: absolute;
+      .l-popup {
         background-color: white;
         -moz-box-shadow: 0 1px 4px rgba(0,0,0,0.2);
-        -webkit-filter: drop-shadow(0 1px 4px rgba(0,0,0,0.2));
-        filter: drop-shadow(0 1px 4px rgba(0,0,0,0.2));
-        padding: 6px;
-        width:450px;
-        border-radius: 5px;
-        border: 1px solid #cccccc;
+        width: 100%;
         bottom: 12px;
         left: -50px;
         font-size:1.25em;
       }
-      .ol-popup:after, .ol-popup:before {
-        top: 100%;
-        border: solid transparent;
-        content: " ";
-        height: 0;
-        width: 0;
-        position: absolute;
-        pointer-events: none;
-      }
-      .ol-popup:after {
-        border-top-color: white;
-        border-width: 10px;
-        left: 48px;
-        margin-left: -10px;
-      }
-      .ol-popup:before {
-        border-top-color: #cccccc;
-        border-width: 11px;
-        left: 48px;
-        margin-left: -11px;
-      }
-
+	  
+	  .leaflet-popup-tip-container {
+		  left:25%;
+		}
+	  
       div#popup-header {
         font-size:0.8em;
         margin-bottom:3px;
       }
       div#popup-content {
         clear:left;
-        max-height:200px;
+		max-height:160px;
         overflow-y:scroll;
         padding-right:6px;
       }
@@ -162,6 +138,7 @@
 
       a.zoom-to-extent {
         color:#ccc;
+		cursor:pointer;
       }
       a.layer-visibility-toggle {
         text-decoration:none;

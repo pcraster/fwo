@@ -10,6 +10,17 @@ var FWO=$.extend(FWO || {},{
         Code and variables for leaving feedback at a certain point.
         */
         map:undefined,
+	init:function() {
+		if(FWO.feedback.map == undefined) {
+                    FWO.feedback.map = new L.Map('feedback-map', {
+			    'zoomControl': false,
+			    'dragging': false,
+		    });
+                }
+		
+		FWO.feedback.vectorLayer = new L.layerGroup()
+		
+	},
         show:function(coord) {
             /*
             FWO.feedback.show(coord)
@@ -35,57 +46,41 @@ var FWO=$.extend(FWO || {},{
                 */
                 $('#comment_body').val("")
 
-                /* 
-                Fetch a bunch of properties from the original map. We will apply these to the
-                mini feedback map which is present in the modal dialog.
-                */
-                var view = new ol.View({ center: coord, zoom: FWO.map.obj.getView().getZoom() })
-
                 /*
                 Create a vector source, icon style, and vector layer which show the map marker
                 in the position defined in coords variable.
                 */
-                var vectorSource = new ol.source.Vector({'features':[new ol.Feature({geometry:new ol.geom.Point(coord)})]});
-                var iconStyle = new ol.style.Style({image: new ol.style.Icon( ({anchor: [0.5, 48],anchorXUnits: 'fraction', anchorYUnits: 'pixels',opacity: 1,src: '/static/gfx/m2.png'}))});
-                var vectorLayer = new ol.layer.Vector({source: vectorSource,style: iconStyle});
-
-                /*
-                We don't want to recreate the small map in the modal dialog every time the
-                comments link is clicked, so only initialize the "feedback-map" instance once,
-                namely when FWO.feedback.map is undefined. All the next times the map will
-                exist already and we can just update it to set the correct extent, view, etc.
-                */
-                if(FWO.feedback.map == undefined) {
-                    FWO.feedback.map = new ol.Map({target: 'feedback-map'});
-                }
+		var icon = new L.Icon({iconUrl: '/static/gfx/m2.png', iconAnchor: [24, 48]});
+		var vector = new L.Marker(coord, {icon: icon});
+		FWO.feedback.vectorLayer.clearLayers()
+		FWO.feedback.vectorLayer.addLayer(vector)
 
                 /*
                 Update the feedback map with the properties (view, extent, etc) from the large
                 map.
                 */
-                FWO.feedback.map.setView(view) //Set the same view as the main map.
-                FWO.map.obj.getLayers().forEach(function(lyr,ix,ar){ FWO.feedback.map.addLayer(lyr) }) //Add the same layers to the feedback map as the main map.
-                FWO.feedback.map.addLayer(vectorLayer) //Add the vector layer with the map marker
+                FWO.feedback.map.fitBounds(FWO.map.obj.getBounds()) //Set the same view as the main map.
+		//FWO.feedback.map.addLayer(FWO.map.BackgroundLayer)
+		//FWO.feedback.map.addLayer(FWO.map.VisibleLayers)
+                FWO.feedback.map.addLayer(FWO.feedback.vectorLayer) //Add the vector layer with the map marker
 
                 /*
                 Update the "map_state", "map_center", "map_view", and "map_marker" input fields. In
                 addition to the comment, these are all required to be able to recreate the same 
                 map on the "Comments and Feedback" page.
                 */
-                var view = FWO.feedback.map.getView()
-                $('form#feedback-form input[name="map_marker"]').val(coord[0]+","+coord[1])
+                $('form#feedback-form input[name="map_marker"]').val(coord.lat+","+coord.lng)
                 $('form#feedback-form input[name="map_state"]').val(FWO.map.getvisiblelayers().join("|"))
-                $('form#feedback-form input[name="map_center"]').val(view.getCenter())
-                $('form#feedback-form input[name="map_view"]').val(view.getCenter()+","+view.getZoom())
+                $('form#feedback-form input[name="map_center"]').val(FWO.feedback.map.getCenter().lat+","+FWO.feedback.map.getCenter().lng)
+                $('form#feedback-form input[name="map_view"]').val(FWO.feedback.map.getCenter().lat+","+FWO.feedback.map.getCenter().lng+","+FWO.feedback.map.getZoom())
 
 
                 /*
                 And trigger that call as well when there is a mapmove event on the small feedback map.
                 */
                 FWO.feedback.map.on('moveend',function(){
-                    var view = FWO.feedback.map.getView()
-                    $('form#feedback-form input[name="map_center"]').val(view.getCenter())
-                    $('form#feedback-form input[name="map_view"]').val(view.getCenter()+","+view.getZoom())
+                    $('form#feedback-form input[name="map_center"]').val(FWO.feedback.map.getCenter().lat+","+FWO.feedback.map.getCenter().lng)
+                    $('form#feedback-form input[name="map_view"]').val(FWO.feedback.map.getCenter().lat+","+FWO.feedback.map.getCenter().lng+","+FWO.feedback.map.getZoom())
                 })
             }
 

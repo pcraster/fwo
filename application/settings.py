@@ -1,5 +1,5 @@
 # Settings overridden by local_settings
-DEBUG=False
+DEBUG=True
 SECRET_KEY=''
 USERNAME=''
 PASSWORD=''
@@ -15,8 +15,8 @@ DATADIR="/var/wwwdata/fwo"
 MAIL_SERVER   = 'smtp.gmail.com'
 MAIL_PORT     = 465
 MAIL_USE_SSL  = True                            # Some servers use MAIL_USE_TLS=True instead
-MAIL_USERNAME = 'email@example.com'
-MAIL_PASSWORD = 'password'
+MAIL_USERNAME = 'badjas42@gmail.com'
+MAIL_PASSWORD = ''
 MAIL_DEFAULT_SENDER = '"Fieldwork Online" <noreply@fwo.com>'
 
 

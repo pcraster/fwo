@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block headcss %}
-    <link rel="stylesheet" href="/static/lib/openlayers/ol.css" type="text/css">
+    <link rel="stylesheet" href="/static/lib/leaflet/leaflet.css" type="text/css">
     <link rel="stylesheet" href="/static/lib/fwo/maps.css" type="text/css">
     <style>
     	ul#feedback-list small {
@@ -25,16 +25,15 @@
     </style>
 {% endblock %}
 {% block footjs %}
-	<script type="text/javascript" src="/static/lib/openlayers/ol.js"></script>
+	<script type="text/javascript" src="/static/lib/leaflet/leaflet.js"></script>
     <script type="text/javascript" src="/static/lib/fwo/fieldworkonline-map.js"></script>
-    <script type="text/javascript" src="/static/lib/fwo/fieldworkonline-popup.js"></script>
+     <script src="https://www.mapquestapi.com/sdk/leaflet/v2.2/mq-map.js?key=Rb8mk6WhnRbq72GpHLRGXnkX5u35Ou3K "></script>
     <script type="text/javascript">
         $(document).ready(function(){
             /*
             Set some init values that will be used by FWO.map.init()
             */
             FWO.config = {
-                'bingmaps_key':    '{{config["BINGMAPS_KEY"]}}',
                 'map_state':       "{{feedback.map_state}}",
                 'map_view':        "{{feedback.map_view}}",
                 'map_marker':      "{{feedback.map_marker}}"
