@@ -12,12 +12,13 @@ var FWO=$.extend(FWO || {},{
 				type: "GET",
 				url: url,
 				success: function(data) {
+					
 					FWO.map._layers = FWO.map.json_to_layers(data)
 
 					FWO.map.init()
+					
 					FWO.map.update_from_state()
 
-					FWO.popup.init()
 				},
 				error: function() {
 					alert("Could not load map!")
@@ -30,25 +31,22 @@ var FWO=$.extend(FWO || {},{
 
 			Initialize the fieldwork online map in a user's workspace.
 			*/
+			
+			FWO.map.BackgroundLayer = new L.LayerGroup()
+			FWO.map.VisibleLayers = new L.LayerGroup()
+			
+			for (layer in FWO.map._layers.data) {
+				FWO.map.VisibleLayers.addLayer(FWO.map._layers['data'][layer])
+				}
 
 			/*
-			Create the map controls. These will be added to the map instance later.
-			*/
-			var controls = ol.control.defaults({rotate: false}).extend([new ol.control.ScaleLine()])
-			var interactions = ol.interaction.defaults({altShiftDragRotate:false, pinchRotate:false});
-			var view = new ol.View({center: ol.proj.transform([5.721586,44.42], 'EPSG:4326', 'EPSG:3857'),zoom: 11})
-
-			/*
-			Create the map object in FWO.map.obj. This is the OpenLayers map instance
+			Create the map object in FWO.map.obj. This is the Leaflet map instance
 			that will hold the actual map.
 			*/
-			FWO.map.obj = new ol.Map({
-				target: 'map',
-				layers: FWO.map._layers,
-				overlays: [],
-				view: view,
-				controls: controls,
-				interactions: interactions
+			FWO.map.obj = L.map('map', {
+				layers: [FWO.map.VisibleLayers, FWO.map.BackgroundLayer],
+				center: [5.721586,44.42],
+				zoom: 4
 			})
 
 			/* Attach a click event to the background links for changing the background map */
@@ -70,12 +68,12 @@ var FWO=$.extend(FWO || {},{
 				var is_visible=FWO.map.datalayer_toggle_visibility(name)
 				var li = $("li#userdata-layers-"+name)
 				if(li) {
-				if(is_visible) {
-					li.removeClass("wms-layer-hidden").addClass("wms-layer-visible")
-				} else {
-					li.removeClass("wms-layer-visible").addClass("wms-layer-hidden")
+					if(is_visible) {
+						li.removeClass("wms-layer-visible").addClass("wms-layer-hidden")
+					} else {
+						li.removeClass("wms-layer-hidden").addClass("wms-layer-visible")
+					}
 				}
-			}
 			});
 
 			/* 
@@ -118,46 +116,15 @@ var FWO=$.extend(FWO || {},{
 			*/
 			$('[data-toggle="tooltip"]').tooltip()
 		},
-		//obj: undefined,
-		//overlay: new ol.Overlay({element: document.getElementById('popup')}),
-		/*
-		layers:{
-			backgroundAerial:new ol.layer.Tile({
-				visible: true,
-				preload: Infinity,
-				source: new ol.source.BingMaps({
-					key: window.BINGMAPS_KEY,
-					imagerySet: 'Aerial'
-				})
-			}),
-			backgroundRoad:new ol.layer.Tile({
-				visible: true,
-				preload: Infinity,
-				source: new ol.source.BingMaps({
-					key: window.BINGMAPS_KEY,
-					imagerySet: 'Road'
-				})
-			}),
-			backgroundWms:new ol.layer.Tile({
-				visible: true,
-				source: new ol.source.TileWMS((BACKGROUND_LAYERS))
-			}),
-			qgisServer:new ol.layer.Image({
-				visible: true,
-				source: new ol.source.ImageWMS({
-					url: WMS_URL,
-					params: { 
-						'LAYERS': window.getVisibleWmsLayers(),
-						'FORMAT': "image/png; mode=8bit"
-					}
-				})
-			})
-		},
-		*/
 		getlayerbyname:function(name) {
-			for(var i=0; i<FWO.map._layers.length; i++) {
-				if(FWO.map._layers[i]["_name"] == name) {
-					return FWO.map._layers[i]
+			/*
+			FWO.map.getlayerbyname(name)
+			
+			takes a name, passes the layer
+			*/
+			for(var layergroup in FWO.map._layers) {
+				if(Object.prototype.hasOwnProperty.call(FWO.map._layers[layergroup], name)) {
+					return FWO.map._layers[layergroup][name]
 				}
 			}
 			return false;
@@ -167,12 +134,15 @@ var FWO=$.extend(FWO || {},{
 			FWO.map.getvisiblelayers()
 
 			Returns a list of layer names which are visible.
+			
+			Visible.getLayers()
 			*/
 			var visible_layers = []
-			for(var i=0; i<FWO.map._layers.length; i++) {
-				if("_name" in FWO.map._layers[i]) {
-					if(FWO.map._layers[i].getVisible()) {
-						visible_layers.push(FWO.map._layers[i]._name)
+			for(var layergroup in FWO.map._layers) {
+				for(var layername in FWO.map._layers[layergroup]) {
+					var layer = FWO.map._layers[layergroup][layername]
+					if(FWO.map.VisibleLayers.hasLayer(layer)) {
+						visible_layers.push(layername)
 					}
 				}
 			}
@@ -183,12 +153,18 @@ var FWO=$.extend(FWO || {},{
 			FWO.map.setvisiblelayers()
 
 			Hides all layers except the ones passed in visible_layers
+			
+			Visible.clearLayers()
+			for layer in visible_layers: Visible.addLayer(layer)
 			*/
-			for(var i=0; i<FWO.map._layers.length; i++) {
-				if("_name" in FWO.map._layers[i]) {
-					var layer = FWO.map._layers[i]
-					var inArray = $.inArray(layer["_name"],visible_layers)
-					layer.setVisible(inArray != -1 ? true : false)
+			FWO.map.VisibleLayers.clearLayers()
+			for(var layergroup in FWO.map._layers) {
+				for(var layername in layergroup) {
+					var layer = FWO.map._layers[layergroup][layername]
+					var inArray = $.inArray(layername,visible_layers)
+					if (inArray != -1) {
+						FWO.map.VisibleLayers.addLayer(layer)
+					}
 				}
 			}
 		},
@@ -197,15 +173,12 @@ var FWO=$.extend(FWO || {},{
 			FWO.map.setbackground()
 
 			Set the background of the map
+			
+			
 			*/
-			for(var i=0; i<FWO.map._layers.length; i++) {
-				var layer = FWO.map._layers[i]
-				if("_type" in layer) {
-					if(layer["_type"] == 'background' || layer["_type"] == 'wms') {
-						layer.setVisible(layer["_name"]==name?true:false) 
-					}
-				}
-			}
+			var layer = FWO.map.getlayerbyname(name)
+			FWO.map.BackgroundLayer.clearLayers()
+			FWO.map.BackgroundLayer.addLayer(layer)
 		},
 		datalayer_zoom_to:function(name) {
 			/*
@@ -214,8 +187,8 @@ var FWO=$.extend(FWO || {},{
 			Zoom to the extent of one of the data layers
 			*/
 			var layer = FWO.map.getlayerbyname(name)
-			var extent = layer.getSource().getExtent()
-		 	FWO.map.obj.getView().fitExtent(extent, FWO.map.obj.getSize())
+			FWO.map.obj.fitBounds(layer.getBounds(), {padding: [0.5, 0.5]})
+			
 		},
 		datalayer_toggle_visibility:function(name) {
 			/*
@@ -224,8 +197,15 @@ var FWO=$.extend(FWO || {},{
 			Toggle the visibility of one of the data layers
 			*/
 			var layer = FWO.map.getlayerbyname(name)
-			layer.setVisible(layer.getVisible() ? false : true)
-			return layer.getVisible()
+			var is_visible = FWO.map.VisibleLayers.hasLayer(layer)
+			if(is_visible) {
+				FWO.map.VisibleLayers.removeLayer(layer) 
+			}
+			else {
+				FWO.map.VisibleLayers.addLayer(layer)
+			}
+			return is_visible
+			
 		},
 		json_to_layers:function(data) {
 			/*
@@ -234,68 +214,79 @@ var FWO=$.extend(FWO || {},{
 			Convert json data created by the "project_data_maplayers" view to OpenLayers map
 			layers which can be added to the map.
 			*/
-			var layers = []
+			var layers = {
+				'background' : {},
+				'wms' : {},
+				'data' : {}	
+				}
 			for(var i=0; i<data.layers.length; i++) {
-				var layer = data.layers[i];
-				var new_layer = undefined
-				/*
-				For bing road and bing aerial layers.
-				*/
-				if(layer['type'] == 'background') {
-					new_layer = new ol.layer.Tile({
-						visible: false,
-						preload: Infinity,
-						source: new ol.source.MapQuest({layer: 'osm'})
-					});
-				}
-				/* 
-				For WMS layers representing a BackgroundLayer.
-				*/
-				if(layer['type'] == 'wms') {
-					new_layer = new ol.layer.Tile({
-						visible: false,
-						source: new ol.source.TileWMS(({
-							url: layer['attributes']['mapserver_url'],
-							params: {
-								'LAYERS':layer['attributes']['mapserver_layer'],
-								'TILED': true,
-								'MAP':layer['attributes']['mapserver_mapfile'],
-								'FORMAT':'image/png; mode=8bit' //image/png; mode=8bit
-							},
-							serverType: 'mapserver'
-						}))
-					})
-				}
-
-				/*
-				For geojson layers with Observations in it.
-				*/
-				if(layer['type'] == 'geojson') {
-					new_layer = new ol.layer.Vector({
-						visible: true,
-						source: new ol.source.GeoJSON({
-							projection : 'EPSG:3857',
-							preFeatureInsert: function(feature) { feature.geometry.transform('EPSG:4326', 'EPSG:3857') },
-							url:layer['attributes']['url']
-						}),
-						style: new ol.style.Style({
-							image: new ol.style.Circle({
-								radius: 4,
-								fill: new ol.style.Fill({color:layer['attributes']['color'],opacity: 0.6}),
-								stroke: new ol.style.Stroke({color: 'black', width: 1, opacity:0.5})
-							})
+				(function(i) {
+					var layer = data.layers[i];
+					var layername = layer['name']
+					var new_layer = undefined
+					var geojson = undefined
+					/*
+					For MQ road and satellite layers. 
+					*/
+					if(layer['type'] == 'background') {
+						new_layer = new MQ.mapLayer();
+						options = ['map', 'hyb', 'sat', 'light', 'dark']
+						if (options.indexOf(layername) > -1) {new_layer.setMapType(layername)}
+						if (new_layer instanceof L.Layer) {
+							layers.background[layername] = new_layer
+							}
+					}
+					/* 
+					For WMS layers representing a BackgroundLayer.
+					L.TileLayer.WMS()
+					Nog niet getest
+					*/
+					if(layer['type'] == 'wms') {
+						layer_url = layer['attributes']['mapserver_url']+'?&map='+layer['attributes']['mapserver_mapfile']
+						new_layer = L.tileLayer.wms(layer_url, {
+							layers: layer['attributes']['mapserver_layer'],
+							format: 'image/png'
 						})
-					});
-				}
-				/*
-				Only add the new layer to the layers variable when it is actually an instance of an
-				OpenLayers tile or vector layer.
-				*/
-				if(new_layer instanceof ol.layer.Vector || new_layer instanceof ol.layer.Tile) {
-					new_layer._name = layer['name'] //Add a _name attribute to the layer so that we can find it again using FWO.map.getlayerbyname()
-					new_layer._type = layer['type']
-					layers.push(new_layer)
-				}
+						if (new_layer instanceof L.Layer) {
+							layers.wms[layername] = new_layer
+							}
+					}
+
+					/*
+					For geojson layers with Observations in it.
+					*/
+					
+					if(layer['type'] == 'geojson') {
+						new_layer = new L.geoJSON(null, {
+								pointToLayer: function (feature, latlng) {
+									var new_style = {
+										radius: 5,
+										fillColor: layer['attributes']['color'],
+										color: '#000000',
+										weight: 0,
+										opacity: 1,
+										fillOpacity: 1
+									}
+									return L.circleMarker(latlng, new_style).addTo(layers.data[layername]);
+								},
+								onEachFeature: function (feature, point) {
+									point.bindPopup(FWO.util.feature2popup(feature), {
+										autoPan: true,
+										maxHeight: 200,
+										minWidth: 300
+										});
+									/*point.setStyle(function(feature) {
+										fillColor: FWO.util.getColor(feature);
+									});*/	
+								}
+							})
+						$.getJSON(layer['attributes']['url'], function (res) {
+							new_layer.addData(res)});
+						if (new_layer instanceof L.Layer) {
+							layers.data[layername] = new_layer
+						}
+					}
+				})(i)
 			}
 			return layers
 		},
@@ -320,19 +311,119 @@ var FWO=$.extend(FWO || {},{
 				Update the map view.
 				*/
 				var xyz = FWO.config["map_view"].split(",")
-				var view = new ol.View({ center: [parseFloat(xyz[0]),parseFloat(xyz[1])], zoom: parseInt(xyz[2]) })
-				FWO.map.obj.setView(view);
+				FWO.map.obj.setView([parseFloat(xyz[0]),parseFloat(xyz[1])], parseInt(xyz[2]));
 			}
 			if("map_marker" in FWO.config) {
 				/*
 				Update the map marker.
 				*/
 				var xy = FWO.config["map_marker"].split(",")
-				var vectorSource = new ol.source.Vector({ 'features':[new ol.Feature({geometry:new ol.geom.Point([parseFloat(xy[0]),parseFloat(xy[1])])})], 'projection':'EPSG:4326' });
-				var iconStyle = new ol .style.Style({ image: new ol.style.Icon( ({ anchor: [0.5, 48], anchorXUnits: 'fraction', anchorYUnits: 'pixels', opacity: 1, src: '/static/gfx/m2.png' })) });
-				var layer = new ol.layer.Vector({source: vectorSource, style: iconStyle});
+				var icon = new L.Icon({iconUrl: '/static/gfx/m2.png', iconAnchor: [24, 48]});
+				var layer = new L.Marker([parseFloat(xy[0]),parseFloat(xy[1])], {icon: icon});
 				FWO.map.obj.addLayer(layer)
 			}
+		}
+	},
+	util:{
+		/*
+		Utility functions & values used for parsing the getfeatredata 
+		request data into a pretty looking popup.
+		*/
+		feature2popup:function(feature) {
+			/*
+			FWO.popup.util.feature2popup()
+			Convert a feature to a bunch of HTML that can be inserted in a map popup.
+			*/
+			var html="<div id='popup' class='ol-popup' style='display:block;'>"+
+					"<div id='popup-header' style='height:25px;'>"+
+					"<a id='popup-leave-comment' href='#' data-location=''>Leave comments or feedback</a>"+
+					"<span id='popup-title'></span>"+
+					"<a href='#' id='popup-closer' class='ol-popup-closer'><i class='fa fa-times'></i></a>"+
+					"</div>"+
+					"<div id='popup-content'><table class='table table-condensed' style='width:100%;font-size:10pt;margin-bottom:0px;'>"
+			if(feature) {
+				var prop=feature.properties
+				for(var i in prop) {
+					var val=prop[i]
+					if(typeof val=='string' || typeof val=='number') {
+						val=val+""
+						html+="<tr><td style='padding-left:0px;'>"+i+"</td><td>"+FWO.util.attributeValueParser(val)+"</td></tr>"
+					}
+				}
+			} else {
+				html+="<tr><td colspan='2' style='padding-top:18px;padding-bottom:15px;text-align:center;'>No features were identified at this location.</td></tr>"
+			}
+			return html+"</div></div></div></table>"
+		},
+		attributeValueParser:function(value) {
+			/*
+			FWO.popup.util.attributeValueParser()
+			Returns a parsed attribute value for in the popup. This checks whether the
+			attribute value is a URL, a filename linking to an uploaded attachment, or
+			a paragraph of text. Depending on the type of data it will turn it into a 
+			link, paragraph, or wrap it in a <code> tag.
+			Todo: - change look & feel of large texts. (ie. show a teaser, click to
+							open a modal with the full text)
+						- check if attachments have been uploaded with a HEAD request, show
+							pics in modal and download dialog for other files.
+						- check urls using a regex
+						- PHOTOS... use FWO.util.photomodal() instaed of current one.
+			*/
+
+			/*
+			Define valid filename extensions. Ensures that values such as "12.312" are not
+			seen as files.
+			*/
+			var filename_extensions="png jpg txt doc docx xls xlsx jpeg";
+			var filename_regex=/\.([0-9a-z]+)(?:[\?#]|$)/i;
+			var filename_list=value.split(",")
+			var filename_html=''
+
+			/*
+			Minimum text length to turn into a paragraph. If a lot of text is present as an
+			attribute value (such as a detailed description of something) it is better to 
+			format it as a paragraph rather than an attribute value in a <code> element.
+			*/
+			var length_max=128;
+			var length_truncate=256;
+
+			$.each(filename_list,function(index,filename){
+				var filename_match=filename.match(filename_regex);
+				if(filename_match) {
+					var filename_extension=filename_match[1].toLowerCase()
+					if($.inArray(filename_extension,filename_extensions.split(" "))!=-1) {
+						var is_image=(filename_extension=='png' || filename_extension=='jpeg' || filename_extension=='jpg')?true:false;
+						var filename_url="file?filename="+filename;
+						if(is_image){
+							filename_html+= "<i class='fa fa-photo'></i> <code><a href='#' onclick=\"photoModal('"+filename_url+"')\" class='disabled'>"+filename+"</a></code><br/>"
+						} else {
+							filename_html+= "<i class='fa fa-paperclip'></i> <code><a href='"+filename_url+"' class='disabled' target='_blank'>"+filename+"</a></code><br/>"
+						}
+					}
+				}
+			})
+			if(filename_html=='') {
+				if(value.length>length_max) {
+						value=""+value
+						return "<p>"+FWO.util.escapeHtml(value)+"</p>"
+				} else {
+					value=""+value
+					return "<code>"+FWO.util.escapeHtml(value)+"</code>"
+				}
+			} else {
+				return filename_html
+			}
+		},
+		escapeHtml:function(string) {
+			/*
+			FWO.popup.util.escapeHtml()
+
+			Escapes HTML code to turn it into a string we can display in the document.
+			*/
+			var entityMap = { "&": "&amp;","<": "&lt;",">": "&gt;",'"': '&quot;',"'": '&#39;',"/": '&#x2F;' };
+			return String(string).replace(/[&<>"'\/]/g, function (s) {
+				return entityMap[s];
+			});
 		}
 	}
 })
