@@ -74,7 +74,7 @@
 	                {% for observationlayer in observationlayers %}
 					<tr>
 						<td style="padding-left:15px;">
-						<nobr><i class="fa fa-database"></i> <code>{{observationlayer.name}}</code> ({{observationlayer.num_observations}} observations) <a href="{{ url_for('project_data_layer', slug=project.slug, user_id=user.id, safe_name=observationlayer.safe_name) }}">View as GeoJSON</a></nobr>
+						<nobr><i class="fa fa-database"></i> <code>{{observationlayer.name}}</code> ({{observationlayer.num_observations}} observations) <a href="{{observationlayer.download_link}}">View as GeoJSON</a></nobr>
 						</td>
 						<td></td>
 						<td style="width:100%"></td>
