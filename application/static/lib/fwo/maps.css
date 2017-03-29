@@ -1,6 +1,7 @@
       .map {
-        height: 550px;
-        width: 100%;
+		position: fixed;
+        height: 90%;
+        width: 75%;
       }
       .olControlZoomPanel {
           padding:15px;
@@ -52,8 +53,8 @@
         color:#fff;
         //font-size:0.6em;
       }
-      #accordion { 
-          margin-top:15px; 
+      #accordion {
+          margin-top:15px;
       }
       #accordion span.badge {
 
@@ -85,17 +86,17 @@
 
       .l-popup {
         background-color: white;
-        -moz-box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+        moz-box-shadow: 0 1px 4px rgba(0,0,0,0.2);
         width: 100%;
         bottom: 12px;
         left: -50px;
         font-size:1.25em;
       }
-	  
+
 	  .leaflet-popup-tip-container {
 		  left:25%;
 		}
-	  
+
       div#popup-header {
         font-size:0.8em;
         margin-bottom:3px;

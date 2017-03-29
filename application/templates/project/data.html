@@ -112,10 +112,10 @@
 				{% elif file["type"] == "document" %}
 				<i class="fa fa-file-text-o"></i>
 				{% else %}
-				<i class="fa fa-file-o"></i> 
+				<i class="fa fa-file-o"></i>
 				{% endif %}
 
-				<a href="file?filename={{file["name"]}}">{{file["name"]}}</a></td>
+				<a href="file?filename={{file[name]}}">{{file["name"]}}</a></td>
 				<td>{{file["type"]}}</td>
 				<td>{{file["size"]}}</td>
 			</tr>

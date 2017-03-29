@@ -20,14 +20,16 @@ def createdb():
 	Create the database.
 	"""
 	db.create_all()
-	#initdb()
 
 @manager.command
-def clearuserdata():
+@manager.option('-u', '--username', help='Username')
+def clearuserdata(username):
 	"""
-	Will clear all userdata!!! Use with care!!!
+	Will clear all data for a given user!!! Use with care!!!
 	"""
-	pass
+	user=User.query.filter(User.username==username).one()
+
+	print'* User and Data deleted'
 
 @manager.command
 def backup():

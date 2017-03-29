@@ -192,10 +192,10 @@ def project(slug=None):
     if request.method=="POST":
         f = request.files['uploadfile']
         filename = os.path.join(project.projectdata, "backgroundlayers", secure_filename(f.filename))
-        
+
         #Create the new layer with the uploaded file.
         try:
-            #Always delete any backgroundlayers which share the same filename.        
+            #Always delete any backgroundlayers which share the same filename.
             BackgroundLayer.query.filter(BackgroundLayer.filename == filename).delete()
             #Save the uploaded file
             f.save(filename)
@@ -204,7 +204,7 @@ def project(slug=None):
             #Add it to the project
             project.backgroundlayers.append(backgroundlayer)
             #Update the project's backgroundlayers.map mapserver configuration file
-            project.background_layers_update()            
+            project.background_layers_update()
             #Commit changes
             db.session.commit()
         except Exception as e:
@@ -212,7 +212,7 @@ def project(slug=None):
             flash("Failed to create background layer from file. Hint: %s"%(e),"error")
         else:
             flash("Added background layer %s"%(backgroundlayer.name),"ok")
-            
+
 
     #If the request method is GET it depends a little bit. If there is an
     #"action" variable we need to actually do something like enroll or toggle
@@ -295,7 +295,7 @@ def backgroundlayer_preview(slug=None, backgroundlayer_id=None):
     """
     project = Campaign.query.filter_by(slug=slug).first_or_404()
     backgroundlayer = BackgroundLayer.query.filter_by(id=backgroundlayer_id).first_or_404()
-    
+
     #Check if mapserver is reachable.
     mapserver_request = requests.get(app.config["MAPSERVER_URL"])
     return render_template("backgroundlayer_preview.html", project=project, backgroundlayer=backgroundlayer, mapserver_request=mapserver_request)
@@ -559,7 +559,7 @@ def project_data_maplayers(slug, user_id):
         'label':'Mapquest Satellite',
         'type':'background'
     })
-    
+
     for backgroundlayer in project.backgroundlayers:
         layers.append({
             'name':backgroundlayer.name,
@@ -571,7 +571,7 @@ def project_data_maplayers(slug, user_id):
                 'mapserver_mapfile':project.background_layers_mapfile
             }
         })
-        
+
     for observationlayer in observationlayers:
         layers.append({
             'name':observationlayer.safe_name,

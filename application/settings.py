@@ -6,6 +6,7 @@ PASSWORD=''
 SECRET_KEY = ''
 CSRF_ENABLED = True
 SQLALCHEMY_DATABASE_URI = '' 
+#SERVER_NAME=''
 
 # Development paths...
 APPDIR="/var/www/fwo"

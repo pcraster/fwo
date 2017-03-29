@@ -1,28 +1,28 @@
 <div class="modal" id="feedback-modal" style="background-color:transparent;">
-  <div class="modal-dialog">
-  <form id="feedback-form" action="feedback">
-    <div class="modal-content" style="background-color:transparent;">
-      <div class="modal-header" style="background-color:white;">
-        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-        <h4 class="modal-title">Add georeferenced comments or feedback</h4>
-      </div>
-      <div class="model-map" id="feedback-map" style="height:330px;opacity:0;"></div>
-      <div class="modal-body" style="margin-top:5px;padding-bottom:0;background-color:white;">
-      	<small>The above map view will be shown alongside your comments or feedback.</small>
-  		  <div class="form-group" style="padding-top:5px; margin-bottom:0;">
-  		    <!--<label for="exampleInputEmail1">Comments or feedback</label>-->
-  		    <textarea name="comment_body" class="form-control" id="comment_body" placeholder=""></textarea>
-  		  </div>
-      </div>
-      <div class="modal-footer" style="border-top:none;padding-top:2px;background-color:white;">
-        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-        <button type="submit" class="btn btn-primary" id="feedback-modal-submit"><i class="fa fa-comment"></i> Submit</button>
-        <input type="hidden" name="map_state" placeholder="map_state" />
-        <input type="hidden" name="map_view" placeholder="map_view" />
-        <input type="hidden" name="map_marker" placeholder="map_marker" />
-      </div>
-    </div><!-- /.modal-content -->
+	<div class="modal-dialog">
+		<form id="feedback-form" action="feedback">
+			<div class="modal-content" style="background-color:transparent;">
+				<div class="modal-header" style="background-color:white;">
+					<button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+					<h4 class="modal-title">Add georeferenced comments or feedback</h4>
+				</div>
+				<div class="model-map" id="feedback-map" style="height:330px;opacity:0;"></div>
+				<div class="modal-body" style="margin-top:5px;padding-bottom:0;background-color:white;">
+					<small>The above map view will be shown alongside your comments or feedback.</small>
+					<div class="form-group" style="padding-top:5px; margin-bottom:0;">
+						<!--<label for="exampleInputEmail1">Comments or feedback</label>-->
+						<textarea name="comment_body" class="form-control" id="comment_body" placeholder=""></textarea>
+					</div>
+				</div>
+				<div class="modal-footer" style="border-top:none;padding-top:2px;background-color:white;">
+					<button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+					<button type="submit" class="btn btn-primary" id="feedback-modal-submit"><i class="fa fa-comment"></i> Submit</button>
+					<input type="hidden" name="map_state" placeholder="map_state" />
+					<input type="hidden" name="map_view" placeholder="map_view" />
+					<input type="hidden" name="map_marker" placeholder="map_marker" />
+				</div>
+			</div><!-- /.modal-content -->
 
-</form>
-  </div><!-- /.modal-dialog -->
+		</form>
+	</div><!-- /.modal-dialog -->
 </div><!-- /.modal -->

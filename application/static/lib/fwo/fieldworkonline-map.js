@@ -12,11 +12,15 @@ var FWO=$.extend(FWO || {},{
 				type: "GET",
 				url: url,
 				success: function(data) {
-					
+
 					FWO.map._layers = FWO.map.json_to_layers(data)
 
 					FWO.map.init()
-					
+
+					if ("feedback" in FWO) {
+						FWO.feedback.init()
+					}
+
 					FWO.map.update_from_state()
 
 				},
@@ -31,13 +35,13 @@ var FWO=$.extend(FWO || {},{
 
 			Initialize the fieldwork online map in a user's workspace.
 			*/
-			
+
 			FWO.map.BackgroundLayer = new L.LayerGroup()
 			FWO.map.VisibleLayers = new L.LayerGroup()
-			
+
 			for (layer in FWO.map._layers.data) {
 				FWO.map.VisibleLayers.addLayer(FWO.map._layers['data'][layer])
-				}
+			}
 
 			/*
 			Create the map object in FWO.map.obj. This is the Leaflet map instance
@@ -59,8 +63,8 @@ var FWO=$.extend(FWO || {},{
 			})
 			$('ul#background-layers li a').last().click()
 
-			/* 
-			Call FWO.map.datalayer_toggle_visibility when one of the visibility links is clicked 
+			/*
+			Call FWO.map.datalayer_toggle_visibility when one of the visibility links is clicked
 			*/
 			$("a.layer-visibility-toggle").click(function(){
 				var el=$(this).parent("li")
@@ -76,7 +80,7 @@ var FWO=$.extend(FWO || {},{
 				}
 			});
 
-			/* 
+			/*
 			Add a click event handler to the "zoom-to-extent" links for each layer (the magnifying
 			glass)
 			*/
@@ -87,31 +91,6 @@ var FWO=$.extend(FWO || {},{
 			});
 
 			/*
-			Check if the feedback script is loaded.
-			*/
-			if("feedback" in FWO) {
-				/*
-				Add a click event handler to the "leave a comment" link within popups. It uses the links'
-				data-location-x and data-location-y attributes to get the location.
-				*/
-				$("a#popup-leave-comment").click(function(){
-					var el=$(this)
-					var coord=el.data("location")
-					FWO.feedback.show(coord)
-				});			
-				/*
-				Add a "submit" event handler to the feedback form to call FWO.feedback.submit when the
-				"submit feedback" button is clicked.
-				*/
-				$("form#feedback-form").submit(FWO.feedback.submit)
-			} else {
-				/*
-				
-				*/
-				$("a#popup-leave-comment").hide()
-			}
-
-			/*
 			Initialize any bootstrap tooltips which may exist on the page.
 			*/
 			$('[data-toggle="tooltip"]').tooltip()
@@ -119,7 +98,7 @@ var FWO=$.extend(FWO || {},{
 		getlayerbyname:function(name) {
 			/*
 			FWO.map.getlayerbyname(name)
-			
+
 			takes a name, passes the layer
 			*/
 			for(var layergroup in FWO.map._layers) {
@@ -134,14 +113,14 @@ var FWO=$.extend(FWO || {},{
 			FWO.map.getvisiblelayers()
 
 			Returns a list of layer names which are visible.
-			
+
 			Visible.getLayers()
 			*/
 			var visible_layers = []
 			for(var layergroup in FWO.map._layers) {
 				for(var layername in FWO.map._layers[layergroup]) {
-					var layer = FWO.map._layers[layergroup][layername]
-					if(FWO.map.VisibleLayers.hasLayer(layer)) {
+					var layer = FWO.map.getlayerbyname(layername)
+					if(FWO.map.VisibleLayers.hasLayer(layer) || FWO.map.BackgroundLayer.hasLayer(layer)) {
 						visible_layers.push(layername)
 					}
 				}
@@ -153,17 +132,19 @@ var FWO=$.extend(FWO || {},{
 			FWO.map.setvisiblelayers()
 
 			Hides all layers except the ones passed in visible_layers
-			
-			Visible.clearLayers()
-			for layer in visible_layers: Visible.addLayer(layer)
 			*/
+
 			FWO.map.VisibleLayers.clearLayers()
 			for(var layergroup in FWO.map._layers) {
-				for(var layername in layergroup) {
-					var layer = FWO.map._layers[layergroup][layername]
+				for(var layername in FWO.map._layers[layergroup]) {
 					var inArray = $.inArray(layername,visible_layers)
 					if (inArray != -1) {
-						FWO.map.VisibleLayers.addLayer(layer)
+						if (layergroup == 'background' || layergroup == 'wms') {
+							FWO.map.setbackground(layername)
+						}
+						if (layergroup == 'data') {
+							FWO.map.datalayer_toggle_visibility(layername)
+						}
 					}
 				}
 			}
@@ -173,8 +154,8 @@ var FWO=$.extend(FWO || {},{
 			FWO.map.setbackground()
 
 			Set the background of the map
-			
-			
+
+
 			*/
 			var layer = FWO.map.getlayerbyname(name)
 			FWO.map.BackgroundLayer.clearLayers()
@@ -187,8 +168,8 @@ var FWO=$.extend(FWO || {},{
 			Zoom to the extent of one of the data layers
 			*/
 			var layer = FWO.map.getlayerbyname(name)
-			FWO.map.obj.fitBounds(layer.getBounds(), {padding: [0.5, 0.5]})
-			
+			FWO.map.obj.fitBounds(layer.getBounds(), {padding: [2.5, 2.5]})
+
 		},
 		datalayer_toggle_visibility:function(name) {
 			/*
@@ -199,17 +180,17 @@ var FWO=$.extend(FWO || {},{
 			var layer = FWO.map.getlayerbyname(name)
 			var is_visible = FWO.map.VisibleLayers.hasLayer(layer)
 			if(is_visible) {
-				FWO.map.VisibleLayers.removeLayer(layer) 
+				FWO.map.VisibleLayers.removeLayer(layer)
 			}
 			else {
 				FWO.map.VisibleLayers.addLayer(layer)
 			}
 			return is_visible
-			
+
 		},
 		json_to_layers:function(data) {
 			/*
-			FWO.map.json_to_layers() 
+			FWO.map.json_to_layers()
 
 			Convert json data created by the "project_data_maplayers" view to OpenLayers map
 			layers which can be added to the map.
@@ -217,8 +198,8 @@ var FWO=$.extend(FWO || {},{
 			var layers = {
 				'background' : {},
 				'wms' : {},
-				'data' : {}	
-				}
+				'data' : {}
+			}
 			for(var i=0; i<data.layers.length; i++) {
 				(function(i) {
 					var layer = data.layers[i];
@@ -226,7 +207,7 @@ var FWO=$.extend(FWO || {},{
 					var new_layer = undefined
 					var geojson = undefined
 					/*
-					For MQ road and satellite layers. 
+					For MQ road and satellite layers.
 					*/
 					if(layer['type'] == 'background') {
 						new_layer = new MQ.mapLayer();
@@ -234,9 +215,9 @@ var FWO=$.extend(FWO || {},{
 						if (options.indexOf(layername) > -1) {new_layer.setMapType(layername)}
 						if (new_layer instanceof L.Layer) {
 							layers.background[layername] = new_layer
-							}
+						}
 					}
-					/* 
+					/*
 					For WMS layers representing a BackgroundLayer.
 					L.TileLayer.WMS()
 					Nog niet getest
@@ -249,38 +230,33 @@ var FWO=$.extend(FWO || {},{
 						})
 						if (new_layer instanceof L.Layer) {
 							layers.wms[layername] = new_layer
-							}
+						}
 					}
 
 					/*
 					For geojson layers with Observations in it.
 					*/
-					
+
 					if(layer['type'] == 'geojson') {
 						new_layer = new L.geoJSON(null, {
-								pointToLayer: function (feature, latlng) {
-									var new_style = {
-										radius: 5,
-										fillColor: layer['attributes']['color'],
-										color: '#000000',
-										weight: 0,
-										opacity: 1,
-										fillOpacity: 1
-									}
-									return L.circleMarker(latlng, new_style).addTo(layers.data[layername]);
-								},
-								onEachFeature: function (feature, point) {
-									point.bindPopup(FWO.util.feature2popup(feature), {
-										autoPan: true,
-										maxHeight: 200,
-										minWidth: 400,
-										offset: [110,7.5]
-										});
-									/*point.setStyle(function(feature) {
-										fillColor: FWO.util.getColor(feature);
-									});*/	
+							pointToLayer: function (feature, latlng) {
+								var new_style = {
+									radius: 5,
+									fillColor: layer['attributes']['color'],
+									color: '#111111',
+									weight: 0.5,
+									opacity: 1,
+									fillOpacity: 1
 								}
-							})
+								return L.circleMarker(latlng, new_style).addTo(layers.data[layername]);
+							},
+							onEachFeature: function (feature, point) {
+								point.bindPopup(FWO.util.feature2popup(feature))
+								/*point.setStyle(function(feature) {
+										fillColor: FWO.util.getColor(feature);
+									});*/
+							}
+						})
 						$.getJSON(layer['attributes']['url'], function (res) {
 							new_layer.addData(res)});
 						if (new_layer instanceof L.Layer) {
@@ -293,41 +269,43 @@ var FWO=$.extend(FWO || {},{
 		},
 		update_from_state:function() {
 			/*
-			FWO.map.update_for_comment()
+				FWO.map.update_for_comment()
 
-			Function for updating the map state to match a specific state at the
-			time a comment was made. Takes three strings (state, view, and a 
-			marker location)
-			*/
-			if("map_state" in FWO.config) {
-				/*
-				Update the visible layers.
+				Function for updating the map state to match a specific state at the
+				time a comment was made. Takes three strings (state, view, and a
+				marker location)
 				*/
-				var visible_layers = FWO.config["map_state"].split("|")
-				console.log(visible_layers)
-				FWO.map.setvisiblelayers(visible_layers)
-			}
 			if("map_view" in FWO.config) {
 				/*
-				Update the map view.
-				*/
+					Update the map view.
+					*/
 				var xyz = FWO.config["map_view"].split(",")
-				FWO.map.obj.setView([parseFloat(xyz[0]),parseFloat(xyz[1])], parseInt(xyz[2]));
+				latlng = [parseFloat(xyz[0]),parseFloat(xyz[1])]
+				zoom = parseInt(xyz[2])
+				FWO.map.obj.setView(latlng, zoom);
 			}
 			if("map_marker" in FWO.config) {
 				/*
-				Update the map marker.
-				*/
+					Update the map marker.
+					*/
 				var xy = FWO.config["map_marker"].split(",")
 				var icon = new L.Icon({iconUrl: '/static/gfx/m2.png', iconAnchor: [24, 48]});
 				var layer = new L.Marker([parseFloat(xy[0]),parseFloat(xy[1])], {icon: icon});
 				FWO.map.obj.addLayer(layer)
 			}
+			if("map_state" in FWO.config) {
+				/*
+					Update the visible layers.
+					*/
+				var visible_layers = FWO.config["map_state"].split("|")
+				FWO.map.setvisiblelayers(visible_layers)
+			}
+
 		}
 	},
 	util:{
 		/*
-		Utility functions & values used for parsing the getfeatredata 
+		Utility functions & values used for parsing the getfeatredata
 		request data into a pretty looking popup.
 		*/
 		feature2popup:function(feature) {
@@ -335,40 +313,49 @@ var FWO=$.extend(FWO || {},{
 			FWO.util.feature2popup()
 			Convert a feature to a bunch of HTML that can be inserted in a map popup.
 			*/
+			var popup = new L.popup({
+				autoPan: true,
+				maxHeight: 200,
+				minWidth: 400,
+				offset: [110,7.5]
+			})
+
 			var popupdiv = $("<div id='popup' class='l-popup' style='display:block;'></div>")
-			
-			var popupheader = $("<div id='popup-header' style='height:25px;'>"+
-				"<a id='popup-leave-comment' href='#' data-location=''>Leave comments or feedback</a>"+
-				"<span id='popup-title'></span>"+
-				"</div>")
+
+			popupheader = $("<div id='popup-header' style='height:25px;'>"+
+								"<a id='popup-leave-comment' href='#' data-location=''>Leave comments or feedback</a>"+
+								"<span id='popup-title'></span>"+
+								"</div>")
 			popupdiv.append(popupheader)
-			
-			var popupcontent = $("<div id='popup-content'></div>")
-			var table = $("<table class='table table-condensed' style='width:100%;font-size:10pt;margin-bottom:0px;'></table>")
-			if(feature) {
-				var prop=feature.properties
-				for(var i in prop) {
-					var val=prop[i]
-					if(typeof val=='string' || typeof val=='number') {
-						val=val+""
-						table.append("<tr><td style='padding-left:0px;'>"+i+"</td><td>"+FWO.util.attributeValueParser(val)+"</td></tr>")
-					}
+
+			popupcontent = $("<div id='popup-content'></div>")
+			table = $("<table class='table table-condensed' style='width:100%;font-size:10pt;margin-bottom:0px;'></table>")
+			prop=feature.properties
+			for(var i in prop) {
+				var val=prop[i]
+				if(typeof val=='string' || typeof val=='number') {
+					val=val+""
+					table.append("<tr><td style='padding-left:0px;'>"+i+"</td><td>"+FWO.util.attributeValueParser(val)+"</td></tr>")
 				}
-			} else {
-				table.append("<tr><td colspan='2' style='padding-top:18px;padding-bottom:15px;text-align:center;'>No features were identified at this location.</td></tr>")
 			}
 			popupcontent.append(table)
 			popupdiv.append(popupcontent)
-			return popupdiv[0]
+			popupheader.on('click', 'a#popup-leave-comment', function() {
+					var coord=popup.getLatLng()
+					FWO.feedback.show(coord)
+			})
+
+			popup.setContent(popupdiv[0])
+			return popup
 		},
 		attributeValueParser:function(value) {
 			/*
 			FWO.util.attributeValueParser()
 			Returns a parsed attribute value for in the popup. This checks whether the
 			attribute value is a URL, a filename linking to an uploaded attachment, or
-			a paragraph of text. Depending on the type of data it will turn it into a 
+			a paragraph of text. Depending on the type of data it will turn it into a
 			link, paragraph, or wrap it in a <code> tag.
-			Todo: - change look & feel of large texts. (ie. show a teaser, click to
+			Todo: 		- change look & feel of large texts. (ie. show a teaser, click to
 							open a modal with the full text)
 						- check if attachments have been uploaded with a HEAD request, show
 							pics in modal and download dialog for other files.
@@ -387,7 +374,7 @@ var FWO=$.extend(FWO || {},{
 
 			/*
 			Minimum text length to turn into a paragraph. If a lot of text is present as an
-			attribute value (such as a detailed description of something) it is better to 
+			attribute value (such as a detailed description of something) it is better to
 			format it as a paragraph rather than an attribute value in a <code> element.
 			*/
 			var length_max=128;
@@ -410,8 +397,8 @@ var FWO=$.extend(FWO || {},{
 			})
 			if(filename_html=='') {
 				if(value.length>length_max) {
-						value=""+value
-						return "<p>"+FWO.util.escapeHtml(value)+"</p>"
+					value=""+value
+					return "<p>"+FWO.util.escapeHtml(value)+"</p>"
 				} else {
 					value=""+value
 					return "<code>"+FWO.util.escapeHtml(value)+"</code>"

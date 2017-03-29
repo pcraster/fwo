@@ -2,24 +2,25 @@
 {% block content %}
 	<h2>Collaboration</h2>
 	<p>
-		Currently the data for this fieldwork project is only available as GeoJSON files. This is your own data.
+		Here you can download the fieldwork data as GeoJSON files. <br>
+		This is your own data:
 	</p>
 	<ul>
 		{% for observationlayer in observationlayers %}
-			<li> 
+			<li>
 				<strong><a href="{{observationlayer.download_link}}">{{observationlayer.name}}</a></strong>
 				<code>{{observationlayer.download_link}}</code>
 			</li>
 		{% endfor %}
 	</ul>
 	<p>
-		This is the combined data from you and all your partners.
+		This is the combined data from all participants of this project:
 	</p>
 	<ul>
 		{% for campaignlayer in campaignlayers %}
-			<li> 
+			<li>
 				<strong><a href="{{url_for('campaign_data', slug=project.slug, safe_name=campaignlayer)}}">{{campaignlayer}}</a></strong>
-				<code>{{url_for('campaign_data', slug=project.slug, safe_name=campaignlayer)}}</code>
+				<code>{{url_for('campaign_data', slug=project.slug, safe_name=campaignlayer, _external=true)}}</code>
 			</li>
 		{% endfor %}
 	</ul>
