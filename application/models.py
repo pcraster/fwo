@@ -614,11 +614,11 @@ class Campaign(db.Model):
         Returns a list of unique safe_names that exist as ObservationLayers
         among all the users in the campaign.
         """
-        collaboratelayers=[]
+        collaboratelayers={}
         observationlayers=ObservationLayer.query.filter_by(campaign_id=self.id).all()
         for layer in observationlayers:
-            if layer.safe_name not in collaboratelayers:
-                collaboratelayers.append(layer.safe_name)
+            if layer.safe_name not in collaboratelayers.keys():
+                collaboratelayers[layer.safe_name]={"name":layer.name, "safe_name": layer.safe_name}
         return collaboratelayers
 
     def campaign_data_featurecollection(self, safe_name):
